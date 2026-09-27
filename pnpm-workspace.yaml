@@ -1,0 +1,15 @@
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  core-js: true
+  esbuild: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true
+# pnpm settings. Since pnpm 10 these live here rather than in package.json's
+# "pnpm" field, which newer pnpm ignores outright.
+#
+# pnpm blocks dependency install scripts by default. These five genuinely need
+# theirs: prisma and its engines fetch the query engine binary, sharp and
+# esbuild fetch platform binaries, unrs-resolver likewise. Without them the
+# build fails at "prisma generate" or on a missing native module.

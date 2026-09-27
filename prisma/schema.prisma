@@ -1,0 +1,16 @@
+// Warehouse dashboard — schema `warehouse` in the shared salesreport project.
+// `app` is listed so the staff roster (app.staff) can be read for the
+// department gate; this app never writes to it.
+//
+// Models for the four pages land here once their source files are confirmed.
+
+generator client {
+  provider        = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  schemas   = ["warehouse", "app"]
+}
