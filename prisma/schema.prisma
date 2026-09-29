@@ -14,3 +14,25 @@ datasource db {
   directUrl = env("DIRECT_URL")
   schemas   = ["warehouse", "app"]
 }
+
+// One row per email route. "outward" = BOC orders sent to SEED HQ Japan;
+// "inward" = customer POs received into Malaysia. Created on first save —
+// until then the page shows the defaults in src/lib/email/defaults.ts.
+// SMTP credentials are NOT stored here: they live in env vars (SMTP_*).
+model EmailRoute {
+  route           String   @id // "outward" | "inward"
+  enabled         Boolean  @default(true)
+  mailbox         String   @default("") // outward: reply-to; inward: address customers send POs to
+  toList          String[] @default([]) @map("to_list")
+  ccList          String[] @default([]) @map("cc_list")
+  bccList         String[] @default([]) @map("bcc_list")
+  subjectTemplate String   @map("subject_template")
+  bodyTemplate    String   @map("body_template")
+  attachmentName  String   @default("") @map("attachment_name")
+  autoAck         Boolean  @default(false) @map("auto_ack") // inward only
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  updatedBy       String?  @map("updated_by")
+
+  @@map("email_route")
+  @@schema("warehouse")
+}

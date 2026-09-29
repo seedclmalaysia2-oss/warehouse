@@ -7,3 +7,7 @@ next-env.d.ts
 .env
 *.tsbuildinfo
 .claude/settings.local.json
+
+# Business documents (HQ order sheets etc.) stay out of this public repo.
+*.xlsx
+*.xls

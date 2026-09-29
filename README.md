@@ -13,6 +13,7 @@ project), own schema `warehouse`.
 | `/po-conversion` | PO Conversion | shell — awaiting source file |
 | `/boc-stock` | BOC Stock Management | shell — awaiting source file |
 | `/specialty-report` | Specialty CL Monthly Report | shell — awaiting source file |
+| `/email-settings` | Email settings — Outward PO (to HQ) and Inward PO (from customers) | live |
 
 The list lives in `src/lib/pages.ts`; the sidebar and overview both read it.
 Each shell page states what it will show and what it still needs.
@@ -24,6 +25,21 @@ cp .env.example .env     # fill in Supabase URL/anon key and DATABASE_URL (?sche
 pnpm install
 pnpm dev                 # http://localhost:3002
 ```
+
+## Email
+
+`/email-settings` holds two routes, stored in `warehouse.email_route`
+(SQL in `prisma/sql/`):
+
+- **Outward PO** — the BOC order sheet to SEED HQ's SCM Purchasing Group
+  (管理購買G, `kanri_koubai@seed.co.jp`). Enforces HQ's rules from the order
+  workbook: "BOC" in the subject, attachment kept as Excel.
+- **Inward PO** — the inbox customers send POs to, who gets notified, and the
+  acknowledgement reply.
+
+Sending uses SMTP credentials from env vars (`SMTP_*` in `.env.example`), never
+the database. "Send test to me" delivers the rendered sample only to the
+signed-in user.
 
 ## Access
 

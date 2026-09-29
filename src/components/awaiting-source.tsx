@@ -7,7 +7,7 @@ export function AwaitingSource({ sections, needs }: {
 }) {
   return (
     <>
-      <div className="grid">
+      <div className="tiles">
         {sections.map(s => (
           <section className="panel planned" key={s.title}>
             <h2>{s.title}</h2>

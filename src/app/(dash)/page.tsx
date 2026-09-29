@@ -8,7 +8,7 @@ export default function Overview() {
         title="Warehouse"
         description="Consignment, purchase orders, BOC stock and the specialty CL monthly report."
       />
-      <div className="grid">
+      <div className="tiles">
         {PAGES.map(p => (
           <a className="dept" href={p.href} key={p.href}>
             <div className="dept-top">
