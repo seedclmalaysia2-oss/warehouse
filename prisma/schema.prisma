@@ -36,3 +36,25 @@ model EmailRoute {
   @@map("email_route")
   @@schema("warehouse")
 }
+
+// The sending server. Single row, id = 1. `passwordEnc` is AES-256-GCM
+// ciphertext; the key is EMAIL_SECRET_KEY. The plain password never leaves
+// the server and is never returned to the browser.
+model SmtpServer {
+  id              Int       @id @default(1)
+  provider        String    @default("custom")
+  host            String
+  port            Int
+  username        String
+  passwordEnc     String    @map("password_enc")
+  fromName        String    @default("") @map("from_name")
+  fromEmail       String    @map("from_email")
+  lastVerifiedAt  DateTime? @map("last_verified_at")
+  lastVerifyOk    Boolean?  @map("last_verify_ok")
+  lastVerifyError String?   @map("last_verify_error")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  updatedBy       String?   @map("updated_by")
+
+  @@map("smtp_server")
+  @@schema("warehouse")
+}

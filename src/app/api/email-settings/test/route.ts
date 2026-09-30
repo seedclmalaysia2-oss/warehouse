@@ -3,7 +3,8 @@
 import { getAccess } from "@/lib/auth";
 import { render, sampleValues, validate } from "@/lib/email/routes";
 import { RouteKeyZ, RouteSettingsZ } from "@/lib/email/store";
-import { smtpStatus, transport } from "@/lib/email/smtp";
+import { getSmtpConfig, transport } from "@/lib/email/smtp";
+import { explainSmtpError } from "@/lib/email/server-store";
 
 export async function POST(req: Request) {
   const access = await getAccess();
@@ -19,9 +20,9 @@ export async function POST(req: Request) {
   const issues = validate(route.data, settings.data);
   if (issues.length) return Response.json({ error: "Fix the highlighted fields first.", issues }, { status: 422 });
 
-  const status = smtpStatus();
-  if (!status.configured) {
-    return Response.json({ error: `Email sending isn't set up: missing ${status.missing.join(", ")}.` }, { status: 503 });
+  const smtp = await getSmtpConfig().catch(() => null);
+  if (!smtp) {
+    return Response.json({ error: "No working sending server — set one up under Email settings → Sending server." }, { status: 503 });
   }
 
   const s = settings.data;
@@ -34,8 +35,8 @@ export async function POST(req: Request) {
   ].filter(Boolean).join("\n");
 
   try {
-    await transport().sendMail({
-      from: status.from,
+    await transport(smtp).sendMail({
+      from: smtp.from,
       to: access.staff.email,
       replyTo: route.data === "outward" && s.mailbox ? s.mailbox : undefined,
       subject: `[TEST] ${render(s.subjectTemplate, values)}`,
@@ -46,8 +47,7 @@ export async function POST(req: Request) {
         render(s.bodyTemplate, values),
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return Response.json({ error: `The mail server refused it: ${message}` }, { status: 502 });
+    return Response.json({ error: `The mail server refused it: ${explainSmtpError(err)}` }, { status: 502 });
   }
   return Response.json({ ok: true, sentTo: access.staff.email });
 }

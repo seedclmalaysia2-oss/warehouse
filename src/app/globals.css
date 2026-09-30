@@ -651,3 +651,6 @@ a.submit { display: block; text-align: center; text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   .rise { animation: none; }
 }
+
+.nav a.sub { margin-left: 12px; font-size: 0.85rem; font-weight: 500; }
+.nav a.sub::before { content: "↳ "; color: var(--text-muted); }

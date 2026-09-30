@@ -9,7 +9,7 @@ export default async function EmailSettingsPage() {
   // the sender name in the preview.
   const access = await getAccess();
   const sender = access.kind === "ok" ? access.staff.full_name ?? access.staff.email : "";
-  const [routes, smtp] = [await loadRoutes(), smtpStatus()];
+  const [routes, smtp] = await Promise.all([loadRoutes(), smtpStatus()]);
 
   return (
     <>
@@ -27,6 +27,7 @@ export default async function EmailSettingsPage() {
             </span>
             <span className="text-ink-2">
               Sends as <span className="font-mono text-[0.8125rem] text-ink">{smtp.from}</span> via {smtp.host}
+              {smtp.source === "env" && " (from environment variables)"}
             </span>
           </>
         ) : (
@@ -34,18 +35,13 @@ export default async function EmailSettingsPage() {
             <span className="inline-flex items-center gap-2 font-semibold text-warn">
               <span className="size-2 rounded-full bg-warn" /> Not set up
             </span>
-            <span className="text-ink-2">
-              Settings can be saved now. Sending needs{" "}
-              {smtp.missing.map((m, i) => (
-                <span key={m}>
-                  {i > 0 && ", "}
-                  <code className="font-mono text-[0.8125rem] text-ink">{m}</code>
-                </span>
-              ))}{" "}
-              in the environment.
-            </span>
+            <span className="text-ink-2">{smtp.reason} Routes can be saved now; sending waits for the server.</span>
           </>
         )}
+        <a href="/email-settings/server"
+           className="ml-auto rounded-lg border border-line-strong bg-surface px-3 py-1.5 font-semibold text-ink-2 no-underline transition-colors hover:border-brand hover:text-ink">
+          {smtp.configured ? "Manage server" : "Set up sending server"} →
+        </a>
       </section>
 
       <div className="flex flex-col gap-10">
