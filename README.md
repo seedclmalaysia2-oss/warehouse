@@ -14,6 +14,7 @@ project), own schema `warehouse`.
 | `/boc-stock` | BOC Stock Management | shell — awaiting source file |
 | `/specialty-report` | Specialty CL Monthly Report | shell — awaiting source file |
 | `/email-settings` | Email settings — Outward PO (to HQ) and Inward PO (from customers) | live |
+| `/email-settings/server` | Sending server (SMTP) | live |
 
 The list lives in `src/lib/pages.ts`; the sidebar and overview both read it.
 Each shell page states what it will show and what it still needs.
@@ -37,9 +38,12 @@ pnpm dev                 # http://localhost:3002
 - **Inward PO** — the inbox customers send POs to, who gets notified, and the
   acknowledgement reply.
 
-Sending uses SMTP credentials from env vars (`SMTP_*` in `.env.example`), never
-the database. "Send test to me" delivers the rendered sample only to the
-signed-in user.
+The sending server is entered on `/email-settings/server` and stored in
+`warehouse.smtp_server`. The password is AES-256-GCM encrypted with
+`EMAIL_SECRET_KEY` (Vercel + `.env`; local and production must share it, since
+they share the database) and is never returned to the browser. `SMTP_*` env
+vars are a fallback when nothing is saved. "Send test to me" delivers the
+rendered sample only to the signed-in user.
 
 ## Access
 
