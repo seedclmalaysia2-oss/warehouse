@@ -127,7 +127,7 @@ function Overview({ statuses }: { statuses: IssueStatus[] }) {
               {customers.map(([name, c]) => (
                 <tr key={name} className="border-b border-line last:border-0">
                   <td className={`${td} font-semibold text-ink`}>
-                    <a className="no-underline hover:underline" href={`/exchange-stock/transactions?location=${encodeURIComponent(name)}`}>{name}</a>
+                    <a className="no-underline hover:underline" href={`/exchange-stock/customer/${encodeURIComponent(name)}`}>{name}</a>
                   </td>
                   <td className={num}>{c.issued}</td>
                   <td className={num}>{c.returned}</td>
