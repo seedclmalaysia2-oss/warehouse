@@ -58,3 +58,69 @@ model SmtpServer {
   @@map("smtp_server")
   @@schema("warehouse")
 }
+
+// One row per upload of a Stock Issue / Stock Receive listing.
+model ExchangeImport {
+  id          BigInt   @id @default(autoincrement())
+  kind        String // "issue" | "receive"
+  fileName    String   @default("") @map("file_name")
+  dateFrom    DateTime? @map("date_from") @db.Date
+  dateTo      DateTime? @map("date_to") @db.Date
+  rowsAdded   Int      @default(0) @map("rows_added")
+  rowsUpdated Int      @default(0) @map("rows_updated")
+  uploadedAt  DateTime @default(now()) @map("uploaded_at")
+  uploadedBy  String?  @map("uploaded_by")
+  txns        ExchangeTxn[]
+
+  @@map("exchange_import")
+  @@schema("warehouse")
+}
+
+// One row per document line of the daily listings. `location` is the customer.
+// Overdue exchanges are derived from these rows (src/lib/exchange/match.ts).
+model ExchangeTxn {
+  id          BigInt    @id @default(autoincrement())
+  kind        String // "issue" | "receive"
+  docNo       String    @map("doc_no")
+  docDate     DateTime  @map("doc_date") @db.Date
+  adjType     String    @default("") @map("adj_type")
+  location    String
+  reference   String?
+  createdBy   String?   @map("created_by")
+  netAmount   Decimal?  @map("net_amount") @db.Decimal(14, 2)
+  lineNo      Int       @map("line_no")
+  stockId     String    @map("stock_id")
+  description String    @default("")
+  mdaNo       String?   @map("mda_no")
+  brand       String?
+  power       String?
+  expire      String? // YYYYMM as printed on the listing
+  quantity    Int
+  uom         String?
+  unitPrice   Decimal?  @map("unit_price") @db.Decimal(14, 2)
+  amount      Decimal?  @db.Decimal(14, 2)
+  importId    BigInt?   @map("import_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+  import      ExchangeImport?     @relation(fields: [importId], references: [id], onDelete: SetNull)
+  resolution  ExchangeResolution?
+
+  @@unique([kind, docNo, lineNo])
+  @@index([kind, location, stockId])
+  @@index([docDate])
+  @@map("exchange_txn")
+  @@schema("warehouse")
+}
+
+// Manual override for an issue line: returned outside the system, or waived.
+model ExchangeResolution {
+  issueTxnId BigInt      @id @map("issue_txn_id")
+  status     String // "returned" | "waived"
+  note       String      @default("")
+  resolvedAt DateTime    @default(now()) @map("resolved_at")
+  resolvedBy String?     @map("resolved_by")
+  issue      ExchangeTxn @relation(fields: [issueTxnId], references: [id], onDelete: Cascade)
+
+  @@map("exchange_resolution")
+  @@schema("warehouse")
+}

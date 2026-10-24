@@ -12,6 +12,7 @@ project), own schema `warehouse`.
 | `/consignment` | Customer Consignment | shell — awaiting source file |
 | `/po-conversion` | PO Conversion | shell — awaiting source file |
 | `/boc-stock` | BOC Stock Management | shell — awaiting source file |
+| `/exchange-stock` | Exchange Stock | ready once `prisma/sql/0003_warehouse_exchange_stock.sql` is applied — upload the daily Stock Issue / Stock Receive listings (.xlsx), alert for exchanges not returned in 7 days |
 | `/specialty-report` | Specialty CL Monthly Report | shell — awaiting source file |
 | `/email-settings` | Email settings — Outward PO (to HQ) and Inward PO (from customers) | live |
 | `/email-settings/server` | Sending server (SMTP) | live |

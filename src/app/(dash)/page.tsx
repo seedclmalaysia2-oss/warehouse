@@ -6,7 +6,7 @@ export default function Overview() {
     <>
       <PageHeader
         title="Warehouse"
-        description="Consignment, purchase orders, BOC stock and the specialty CL monthly report."
+        description="Consignment, purchase orders, BOC stock, exchange stock and the specialty CL monthly report."
       />
       <div className="tiles">
         {PAGES.map(p => (
