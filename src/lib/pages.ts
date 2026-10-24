@@ -37,6 +37,13 @@ export const PAGES: WarehousePage[] = [
     status: "shell",
   },
   {
+    href: "/exchange-stock",
+    title: "Exchange Stock",
+    short: "Exchange Stock",
+    description: "Stock Issue and Stock Receive for customer exchanges, by customer — with an alert for exchange items not returned within 1 week.",
+    status: "ready",
+  },
+  {
     href: "/specialty-report",
     title: "Specialty CL Monthly Report",
     short: "Specialty CL",

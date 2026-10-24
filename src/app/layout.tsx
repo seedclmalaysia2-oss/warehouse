@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Warehouse — SEED CL Malaysia",
-  description: "Consignment, PO conversion, BOC stock and specialty CL reporting.",
+  description: "Consignment, PO conversion, BOC stock, exchange stock and specialty CL reporting.",
   robots: { index: false, follow: false },
 };
 

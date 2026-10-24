@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAccess } from "@/lib/auth";
+import { overdueCount } from "@/lib/exchange/store";
 import { NoAccess } from "@/components/no-access";
 import { SideNav } from "@/components/side-nav";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -13,6 +14,8 @@ export default async function DashLayout({ children }: { children: React.ReactNo
   if (access.kind === "signed-out") redirect("/login");
   if (access.kind === "no-access") return <NoAccess email={access.email} />;
 
+  const exchangeOverdue = await overdueCount();
+
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -23,7 +26,7 @@ export default async function DashLayout({ children }: { children: React.ReactNo
             <span className="brand-sub">SEED CL Malaysia</span>
           </span>
         </a>
-        <SideNav />
+        <SideNav exchangeOverdue={exchangeOverdue} />
         <div className="sidebar-foot">
           <a className="hub-link" href="https://seedclmalaysiastore.com">← All dashboards</a>
           <div className="who">{access.staff.full_name ?? access.staff.email}</div>
