@@ -140,3 +140,19 @@ export async function recentImports(take = 10) {
   const rows = await prisma.exchangeImport.findMany({ orderBy: { uploadedAt: "desc" }, take });
   return rows.map(r => ({ ...r, id: Number(r.id) }));
 }
+
+/** Every exchange line for one customer (Location), oldest first, with money as numbers. */
+export async function loadCustomerLines(location: string) {
+  const rows = await prisma.exchangeTxn.findMany({
+    where: { location: { equals: location, mode: "insensitive" }, ...EXCHANGE_ONLY },
+    orderBy: [{ docDate: "asc" }, { docNo: "asc" }, { lineNo: "asc" }],
+  });
+  return rows.map(r => ({
+    ...r,
+    id: Number(r.id),
+    importId: r.importId === null ? null : Number(r.importId),
+    netAmount: r.netAmount?.toNumber() ?? null,
+    unitPrice: r.unitPrice?.toNumber() ?? null,
+    amount: r.amount?.toNumber() ?? null,
+  }));
+}
