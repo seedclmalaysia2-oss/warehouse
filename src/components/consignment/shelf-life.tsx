@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { BANDS, UNDATED, fmtInt, type Group, type GroupKey } from "@/lib/consignment/analyze";
+import { ACCOUNT_PARENT, BANDS, UNDATED, fmtInt, isSubAccount, type Group, type GroupKey } from "@/lib/consignment/analyze";
 
 export const BAND_BG = ["bg-age-1", "bg-age-2", "bg-age-3", "bg-age-4", "age-undated"] as const;
 export const BAND_LABEL = [...BANDS.map(b => b.label), UNDATED.label];
@@ -24,7 +24,12 @@ export function ShelfLife({ groups, by, onBy, bands, selected, onPick }: {
   const [all, setAll] = useState(false);
   const total = bands.reduce((s, n) => s + n, 0);
   const max = Math.max(1, ...groups.map(g => g.units));
-  const shown = all ? groups : groups.slice(0, SHOWN);
+  // By salesman, the key accounts sit under their parent as sub-rows and stay
+  // out of the parent's own figures.
+  const split = by === "owner";
+  const mainGroups = split ? groups.filter(g => !isSubAccount(g.label)) : groups;
+  const subGroups = split ? groups.filter(g => isSubAccount(g.label)) : [];
+  const shown = all ? mainGroups : mainGroups.slice(0, SHOWN);
   const noun = BY.find(b => b.key === by)!.noun;
 
   return (
@@ -79,53 +84,74 @@ export function ShelfLife({ groups, by, onBy, bands, selected, onPick }: {
             <span className="hidden text-right sm:block">Over 1 yr</span>
           </div>
           <ol className="flex flex-col">
-            {shown.map((g, idx) => {
-              const on = selected === g.label;
-              const summary = `${g.label}: ${fmtInt(g.units)} units. ${g.bands.map((n, i) => (n ? `${BAND_LABEL[i]} ${fmtInt(n)}` : "")).filter(Boolean).join(", ")}.`;
-              return (
-                <li
-                  key={g.label}
-                  className={`grid grid-cols-[7.5rem_minmax(0,1fr)_4rem] items-center gap-x-3 rounded-md border-t border-line py-1.5 first:border-t-0 sm:grid-cols-[10rem_minmax(0,1fr)_4.5rem_4.5rem] ${on ? "bg-quiet" : ""}`}
-                >
-                  <button
-                    type="button" onClick={() => onPick(on ? "" : g.label)} aria-pressed={on}
-                    title={on ? `Remove the ${g.label} filter` : `Show only ${g.label}`}
-                    className="truncate rounded px-1 text-left text-sm font-semibold text-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
+            {(() => {
+              const parentShown = shown.some(g => g.label === ACCOUNT_PARENT);
+              const subRows = subGroups.length > 0 && (all || parentShown || mainGroups.length <= SHOWN);
+              const rows: React.ReactNode[] = [];
+              const push = (g: Group, idx: number, isSub: boolean) => {
+                const on = selected === g.label;
+                const summary = `${g.label}: ${fmtInt(g.units)} units. ${g.bands.map((n, i) => (n ? `${BAND_LABEL[i]} ${fmtInt(n)}` : "")).filter(Boolean).join(", ")}.`;
+                rows.push(
+                  <li
+                    key={g.label}
+                    className={`grid grid-cols-[7.5rem_minmax(0,1fr)_4rem] items-center gap-x-3 rounded-md border-t border-line py-1.5 first:border-t-0 sm:grid-cols-[10rem_minmax(0,1fr)_4.5rem_4.5rem] ${on ? "bg-quiet" : ""}`}
                   >
-                    {g.label}
-                    <span className="sr-only"> ({g.outlets} outlets)</span>
-                  </button>
-                  <div role="img" aria-label={summary} className="h-6">
-                    <div
-                      // Remounts with the grouping, so the bars redraw when the view changes.
-                      key={by} className="grow-x flex h-full gap-px"
-                      style={{ width: `${(g.units / max) * 100}%`, ["--i" as string]: idx }}
+                    <button
+                      type="button" onClick={() => onPick(on ? "" : g.label)} aria-pressed={on}
+                      title={on ? `Remove the ${g.label} filter` : `Show only ${g.label}`}
+                      className={`truncate rounded px-1 text-left text-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand ${isSub ? "pl-4 font-medium text-ink-2" : "font-semibold text-ink"}`}
                     >
-                      {g.bands.map((n, i) =>
-                        n > 0 ? (
-                          <span
-                            key={i} title={`${BAND_LABEL[i]}: ${fmtInt(n)} units`}
-                            className={`h-full min-w-[2px] first:rounded-l-sm last:rounded-r-sm ${BAND_BG[i]}`}
-                            style={{ flex: `${n} 1 0` }}
-                          />
-                        ) : null,
-                      )}
+                      {isSub && <span aria-hidden className="mr-1 text-muted">↳</span>}
+                      {g.label}
+                      <span className="sr-only"> ({g.outlets} outlet{g.outlets === 1 ? "" : "s"})</span>
+                    </button>
+                    <div role="img" aria-label={summary} className="h-6">
+                      <div
+                        // Remounts with the grouping, so the bars redraw when the view changes.
+                        key={by} className="grow-x flex h-full gap-px"
+                        style={{ width: `${(g.units / max) * 100}%`, ["--i" as string]: idx }}
+                      >
+                        {g.bands.map((n, i) =>
+                          n > 0 ? (
+                            <span
+                              key={i} title={`${BAND_LABEL[i]}: ${fmtInt(n)} units`}
+                              className={`h-full min-w-[2px] first:rounded-l-sm last:rounded-r-sm ${BAND_BG[i]}`}
+                              style={{ flex: `${n} 1 0` }}
+                            />
+                          ) : null,
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-right text-sm font-semibold tabular-nums text-ink">{fmtInt(g.units)}</span>
-                  <span className="hidden text-right text-sm tabular-nums text-ink-2 sm:block">
-                    {g.units ? Math.round((g.overYearUnits / g.units) * 100) : 0}%
-                  </span>
-                </li>
-              );
-            })}
+                    <span className={`text-right text-sm tabular-nums ${isSub ? "text-ink-2" : "font-semibold text-ink"}`}>{fmtInt(g.units)}</span>
+                    <span className="hidden text-right text-sm tabular-nums text-ink-2 sm:block">
+                      {g.units ? Math.round((g.overYearUnits / g.units) * 100) : 0}%
+                    </span>
+                  </li>,
+                );
+              };
+              const pushSubs = (n: number) => {
+                rows.push(
+                  <li key="sub-head" className="border-t border-line pb-0.5 pt-2 text-xs text-muted">
+                    {ACCOUNT_PARENT}&apos;s accounts, counted separately and not in {ACCOUNT_PARENT}&apos;s total
+                  </li>,
+                );
+                subGroups.forEach((g, i) => push(g, n + i, true));
+              };
+              shown.forEach((g, idx) => {
+                push(g, idx, false);
+                if (subRows && g.label === ACCOUNT_PARENT) pushSubs(idx + 1);
+              });
+              // No parent row to hang them on (filtered away or not in view): list them after the rest.
+              if (subRows && !parentShown) pushSubs(shown.length);
+              return rows;
+            })()}
           </ol>
-          {groups.length > SHOWN && (
+          {mainGroups.length > SHOWN && (
             <button
               type="button" onClick={() => setAll(a => !a)}
               className="mt-2 rounded px-1 text-sm font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             >
-              {all ? `Show top ${SHOWN}` : `Show all ${groups.length}`}
+              {all ? `Show top ${SHOWN}` : `Show all ${mainGroups.length}`}
             </button>
           )}
         </>

@@ -58,6 +58,12 @@ export function ageText(days: number | null): string {
   return m ? `${y} yr ${m} mo` : `${y} yr`;
 }
 
+// Key accounts handled under Alan. They are listed beneath him as sub-accounts
+// and are never added into his own total.
+export const ACCOUNT_PARENT = "Alan";
+export const ACCOUNTS_UNDER_PARENT = ["Dr Specs", "Jac's Optometry", "Mag Eyewear", "Max Vision", "Optics 81", "Specs House"];
+export const isSubAccount = (name: string) => ACCOUNTS_UNDER_PARENT.includes(name);
+
 export const outletKey = (name: string) => name.replace(/\s+/g, " ").trim().toUpperCase();
 
 export type AgedLine = Line & { days: number | null; band: number };

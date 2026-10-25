@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import {
-  NO_FILTERS, buildOutletRows, fmtInt, groupLines, matches, outletKey, totals, withAge,
+  ACCOUNT_PARENT, NO_FILTERS, buildOutletRows, fmtInt, groupLines, isSubAccount, matches, outletKey, totals, withAge,
   type Filters, type GroupKey, type Line, type OutletRef, type OutletRow,
 } from "@/lib/consignment/analyze";
 import { Attention } from "./attention";
@@ -54,8 +54,10 @@ export function Explorer({ lines, outlets, today, warnings, ignoredSheets }: {
     const uniq = (xs: string[]) => [...new Set(xs.filter(Boolean))].sort((a, b) => a.localeCompare(b));
     const families = new Map<string, Set<string>>();
     for (const l of lines) (families.get(l.family) ?? families.set(l.family, new Set()).get(l.family)!).add(l.product);
+    const owners = uniq([...lines.map(l => l.owner), ...outlets.map(o => o.owner)]);
     return {
-      owners: uniq([...lines.map(l => l.owner), ...outlets.map(o => o.owner)]),
+      owners: owners.filter(o => !isSubAccount(o)),
+      accounts: owners.filter(isSubAccount),
       states: uniq([...lines.map(l => l.state), ...outlets.map(o => o.state)]),
       families: [...families.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([f, p]) => [f, [...p].sort()] as const),
     };
@@ -130,6 +132,9 @@ export function Explorer({ lines, outlets, today, warnings, ignoredSheets }: {
           <select className={select} value={filters.owner} onChange={e => setFilter("owner", e.target.value)}>
             <option value="">All salesmen</option>
             {options.owners.map(o => <option key={o}>{o}</option>)}
+            {options.accounts.length > 0 && (
+              <optgroup label={`${ACCOUNT_PARENT}'s accounts`}>{options.accounts.map(o => <option key={o}>{o}</option>)}</optgroup>
+            )}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-semibold text-ink-2">
