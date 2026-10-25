@@ -124,3 +124,64 @@ model ExchangeResolution {
   @@map("exchange_resolution")
   @@schema("warehouse")
 }
+
+// One row per upload of the ECP consignment workbook. Only the latest upload's
+// outlets and lines are kept; older rows are replaced when a new file arrives.
+model ConsignmentImport {
+  id            BigInt   @id @default(autoincrement())
+  fileName      String   @default("") @map("file_name")
+  outlets       Int      @default(0)
+  lines         Int      @default(0)
+  units         Int      @default(0)
+  sheets        String[] @default([])
+  ignoredSheets String[] @default([]) @map("ignored_sheets")
+  warnings      String[] @default([])
+  uploadedAt    DateTime @default(now()) @map("uploaded_at")
+  uploadedBy    String?  @map("uploaded_by")
+  outletRows    ConsignmentOutlet[]
+  lineRows      ConsignmentLine[]
+
+  @@map("consignment_import")
+  @@schema("warehouse")
+}
+
+// Every outlet the workbook lists, including those holding nothing.
+model ConsignmentOutlet {
+  id       BigInt @id @default(autoincrement())
+  importId BigInt @map("import_id")
+  sheet    String
+  rowNo    Int    @map("row_no")
+  owner    String
+  state    String @default("")
+  town     String @default("")
+  outlet   String
+  import   ConsignmentImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@index([importId])
+  @@map("consignment_outlet")
+  @@schema("warehouse")
+}
+
+// One CSG (date, number, quantity) of one product at one outlet.
+model ConsignmentLine {
+  id           BigInt    @id @default(autoincrement())
+  importId     BigInt    @map("import_id")
+  sheet        String
+  rowNo        Int       @map("row_no")
+  owner        String
+  state        String    @default("")
+  town         String    @default("")
+  outlet       String
+  product      String
+  family       String
+  csgNo        String?   @map("csg_no")
+  csgDate      DateTime? @map("csg_date") @db.Date
+  qty          Int
+  needsRefresh Boolean   @default(false) @map("needs_refresh")
+  tag          String? // "new" | "adjusted" | "clearance"
+  import       ConsignmentImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@index([importId])
+  @@map("consignment_line")
+  @@schema("warehouse")
+}

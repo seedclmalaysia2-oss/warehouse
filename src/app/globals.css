@@ -19,6 +19,10 @@
   --color-warn: var(--warn);
   --color-danger: var(--danger);
   --color-paper: var(--paper);
+  --color-age-1: var(--age-1);
+  --color-age-2: var(--age-2);
+  --color-age-3: var(--age-3);
+  --color-age-4: var(--age-4);
   --font-display: Cambria, Georgia, "Times New Roman", serif;
   --font-body: Calibri, "Segoe UI", Inter, system-ui, sans-serif;
   --font-mono: ui-monospace, "Cascadia Code", Menlo, monospace;
@@ -585,7 +589,7 @@ a.submit { display: block; text-align: center; text-decoration: none; }
 .login-card code { font-family: var(--font-mono); font-size: 0.8125rem; }
 
 @media (max-width: 820px) {
-  .shell { grid-template-columns: 1fr; }
+  .shell { grid-template-columns: minmax(0, 1fr); }
   .sidebar {
     position: static;
     height: auto;
@@ -654,3 +658,52 @@ a.submit { display: block; text-align: center; text-decoration: none; }
 
 .nav a.sub { margin-left: 12px; font-size: 0.85rem; font-weight: 500; }
 .nav a.sub::before { content: "↳ "; color: var(--text-muted); }
+
+/* ---------- ECP consignment: stock age ---------- */
+
+/* One hue, light to dark = fresh to old. In dark mode the ramp flips so the
+   oldest stock is still the loudest thing on the bar. */
+:root {
+  --age-1: #cadcfc;
+  --age-2: #8ea6ea;
+  --age-3: #4353a6;
+  --age-4: #141a3d;
+  --age-none: #d9dce8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --age-1: #2b3883;
+    --age-2: #4a5db8;
+    --age-3: #8da2ee;
+    --age-4: #e4ecff;
+    --age-none: #3a4270;
+  }
+}
+
+:root[data-theme="dark"] {
+  --age-1: #2b3883;
+  --age-2: #4a5db8;
+  --age-3: #8da2ee;
+  --age-4: #e4ecff;
+  --age-none: #3a4270;
+}
+
+/* Stock with no CSG date: hatched, so "unknown" never reads as "fresh". */
+.age-undated {
+  background: repeating-linear-gradient(-45deg, var(--age-none) 0 3px, transparent 3px 6px);
+  box-shadow: inset 0 0 0 1px var(--age-none);
+}
+
+/* The bars draw in once on load and when the grouping changes. */
+@keyframes grow-x { from { transform: scaleX(0); } }
+
+.grow-x {
+  transform-origin: left center;
+  animation: grow-x .7s cubic-bezier(.2, .7, .2, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grow-x { animation: none; }
+}
