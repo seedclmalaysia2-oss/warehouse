@@ -59,9 +59,15 @@ export async function loadDocNumbers(): Promise<string[]> {
   }
 }
 
-export async function recentDocs(take = 8) {
+export async function recentDocs(take = 300) {
   const rows = await prisma.consignmentDoc.findMany({ orderBy: { uploadedAt: "desc" }, take });
-  return rows.map(r => ({ csgNo: r.csgNo, toCounter: r.toCounter, lineTotal: r.lineTotal, uploadedAt: r.uploadedAt, uploadedBy: r.uploadedBy }));
+  return rows.map(r => ({ csgNo: r.csgNo, toCounter: r.toCounter, lineTotal: r.lineTotal, fileName: r.fileName, uploadedAt: r.uploadedAt, uploadedBy: r.uploadedBy }));
+}
+
+/** Remove one CSG's details. The workbook figures are untouched. */
+export async function deleteDoc(csgNo: string): Promise<boolean> {
+  const gone = await prisma.consignmentDoc.deleteMany({ where: { csgNo } });
+  return gone.count > 0;
 }
 
 export async function docCount(): Promise<number> {
