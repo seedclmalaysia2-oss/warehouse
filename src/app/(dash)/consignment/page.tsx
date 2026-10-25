@@ -36,7 +36,7 @@ export default async function ConsignmentPage() {
         <div className="needs">
           <strong>No consignment data yet.</strong>
           <ul>
-            <li><a href="/consignment/import">Upload the consignment workbook</a> to see stock by outlet, owner, product and age.</li>
+            <li><a href="/consignment/import">Upload the consignment workbook</a> to see stock by outlet, salesman, product and age.</li>
           </ul>
         </div>
       ) : (

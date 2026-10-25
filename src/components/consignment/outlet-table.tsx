@@ -1,9 +1,15 @@
 "use client";
 import { ageText, fmtDate, fmtInt, type OutletRow, type Tag } from "@/lib/consignment/analyze";
 import { BAND_BG, BAND_LABEL } from "./shelf-life";
+import { ColumnMenu } from "./column-menu";
 
-export type SortKey = "oldest" | "units" | "name";
+export type SortKey = "oldest" | "units" | "name" | "owner" | "state";
 export type Sort = { key: SortKey; dir: "asc" | "desc" };
+
+/** Per-column "show only these" choices; an empty set or blank bound means no filter. */
+export type ColFilters = { outlets: Set<string>; owners: Set<string>; states: Set<string>; min: string; max: string };
+export const NO_COL_FILTERS: ColFilters = { outlets: new Set(), owners: new Set(), states: new Set(), min: "", max: "" };
+export type ColOptions = { outlets: { value: string; count: number }[]; owners: { value: string; count: number }[]; states: { value: string; count: number }[] };
 
 const TAG_NOTE: Record<Tag, string> = {
   new: "New CSG",
@@ -13,26 +19,21 @@ const TAG_NOTE: Record<Tag, string> = {
 
 const th = "whitespace-nowrap px-3 py-2 text-left text-sm font-semibold text-ink-2";
 
-export function OutletTable({ rows, today, sort, onSort, open, onToggle, shown, onMore }: {
+export function OutletTable({ rows, today, sort, onSort, filters, onFilters, options, open, onToggle, shown, onMore }: {
   rows: OutletRow[];
   today: string;
   sort: Sort;
-  onSort: (k: SortKey) => void;
+  onSort: (s: Sort) => void;
+  filters: ColFilters;
+  onFilters: (f: ColFilters) => void;
+  options: ColOptions;
   open: Set<string>;
   onToggle: (key: string) => void;
   shown: number;
   onMore: () => void;
 }) {
   const ariaSort = (k: SortKey) => (sort.key === k ? (sort.dir === "asc" ? "ascending" : "descending") : "none");
-  const sortBtn = (k: SortKey, label: string, right = false) => (
-    <button
-      type="button" onClick={() => onSort(k)}
-      className={`inline-flex items-center gap-1 rounded font-semibold hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${right ? "flex-row-reverse" : ""}`}
-    >
-      {label}
-      <span aria-hidden className={sort.key === k ? "text-ink" : "text-transparent"}>{sort.dir === "asc" && sort.key === k ? "▲" : "▼"}</span>
-    </button>
-  );
+  const menu = { sort, onSort };
   const visible = rows.slice(0, shown);
 
   return (
@@ -41,12 +42,43 @@ export function OutletTable({ rows, today, sort, onSort, open, onToggle, shown, 
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-line bg-quiet">
-              <th className={th} aria-sort={ariaSort("name")}>{sortBtn("name", "Outlet")}</th>
-              <th className={`${th} hidden lg:table-cell`}>Owner</th>
-              <th className={`${th} hidden xl:table-cell`}>State</th>
-              <th className={`${th} text-right`} aria-sort={ariaSort("units")}>{sortBtn("units", "Units", true)}</th>
+              <th className={th} aria-sort={ariaSort("name")}>
+                <ColumnMenu
+                  {...menu} kind="list" label="Outlet" sortKey="name" sortWords={["A to Z", "Z to A"]}
+                  options={options.outlets} selected={filters.outlets} searchHint="Search outlets"
+                  onSelected={s => onFilters({ ...filters, outlets: s })}
+                />
+              </th>
+              <th className={`${th} hidden lg:table-cell`} aria-sort={ariaSort("owner")}>
+                <ColumnMenu
+                  {...menu} kind="list" label="Salesman" sortKey="owner" sortWords={["A to Z", "Z to A"]}
+                  options={options.owners} selected={filters.owners} searchHint="Search salesmen"
+                  onSelected={s => onFilters({ ...filters, owners: s })}
+                />
+              </th>
+              <th className={`${th} hidden xl:table-cell`} aria-sort={ariaSort("state")}>
+                <ColumnMenu
+                  {...menu} kind="list" label="State" sortKey="state" sortWords={["A to Z", "Z to A"]}
+                  options={options.states} selected={filters.states} searchHint="Search states"
+                  onSelected={s => onFilters({ ...filters, states: s })}
+                />
+              </th>
+              <th className={`${th} text-right`} aria-sort={ariaSort("units")}>
+                <ColumnMenu
+                  {...menu} kind="range" label="Units" sortKey="units" sortWords={["Smallest first", "Largest first"]} align="right"
+                  min={filters.min} max={filters.max} onRange={(min, max) => onFilters({ ...filters, min, max })}
+                />
+              </th>
               <th className={`${th} hidden md:table-cell`}>Age of stock</th>
-              <th className={th} aria-sort={ariaSort("oldest")}>{sortBtn("oldest", "Oldest CSG")}</th>
+              <th className={th} aria-sort={ariaSort("oldest")}>
+                <button
+                  type="button" onClick={() => onSort({ key: "oldest", dir: sort.key === "oldest" && sort.dir === "desc" ? "asc" : "desc" })}
+                  className="inline-flex items-center gap-1 rounded font-semibold hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                >
+                  Oldest CSG
+                  <span aria-hidden className={`text-xs ${sort.key === "oldest" ? "text-ink" : "text-transparent"}`}>{sort.dir === "asc" ? "▲" : "▼"}</span>
+                </button>
+              </th>
               <th className={th}><span className="sr-only">Flags</span></th>
             </tr>
           </thead>
