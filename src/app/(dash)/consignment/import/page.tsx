@@ -1,6 +1,7 @@
 import { recentImports, type ImportInfo } from "@/lib/consignment/store";
 import { PageHeader } from "@/components/page-header";
 import { UploadBox } from "@/components/consignment/upload-box";
+import { DocUploadBox } from "@/components/consignment/doc-upload-box";
 
 export default async function ConsignmentImportPage() {
   let imports: ImportInfo[] = [];
@@ -15,8 +16,8 @@ export default async function ConsignmentImportPage() {
   return (
     <>
       <PageHeader
-        title="Upload consignment workbook"
-        description="Update the ECP Consignment figures from the latest CSG workbook."
+        title="Upload consignment data"
+        description="Update the ECP Consignment figures from the CSG workbook, and add the CSG documents behind the Details view."
       >
         <a href="/consignment"
            className="rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm font-semibold text-ink-2 no-underline transition-colors hover:border-brand hover:text-ink">
@@ -26,6 +27,8 @@ export default async function ConsignmentImportPage() {
 
       <div className="max-w-3xl">
         <UploadBox />
+
+        <div className="mt-6"><DocUploadBox /></div>
 
         <section className="mt-6 rounded-xl border border-line bg-quiet p-5 text-sm text-ink-2">
           <h2 className="font-display text-lg font-semibold text-ink">How the workbook is read</h2>

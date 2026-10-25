@@ -1,6 +1,7 @@
 import { PAGES } from "@/lib/pages";
 import { fmtDate, todayISO } from "@/lib/consignment/analyze";
 import { loadSnapshot, type Snapshot } from "@/lib/consignment/store";
+import { loadDocNumbers } from "@/lib/consignment/doc-store";
 import { PageHeader } from "@/components/page-header";
 import { Explorer } from "@/components/consignment/explorer";
 
@@ -17,6 +18,7 @@ export default async function ConsignmentPage() {
   } catch {
     missingTables = true;
   }
+  const docNos = snap ? await loadDocNumbers() : [];
   const today = todayISO();
 
   return (
@@ -48,7 +50,7 @@ export default async function ConsignmentPage() {
           </p>
           <Explorer
             lines={snap.lines} outlets={snap.outlets} today={today}
-            warnings={snap.info.warnings} ignoredSheets={snap.info.ignoredSheets}
+            warnings={snap.info.warnings} ignoredSheets={snap.info.ignoredSheets} docNos={docNos}
           />
         </>
       )}

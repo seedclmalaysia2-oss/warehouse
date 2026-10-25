@@ -24,13 +24,16 @@ const PAGE = 40;
 const select =
   "rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand";
 
-export function Explorer({ lines, outlets, today, warnings, ignoredSheets }: {
+export function Explorer({ lines, outlets, today, warnings, ignoredSheets, docNos }: {
   lines: Line[];
   outlets: OutletRef[];
   today: string;
   warnings: string[];
   ignoredSheets: string[];
+  /** CSG numbers whose ERP document has been uploaded, so they have a Details view. */
+  docNos: string[];
 }) {
+  const docNoSet = useMemo(() => new Set(docNos), [docNos]);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [by, setBy] = useState<GroupKey>("owner");
   const [query, setQuery] = useState("");
@@ -264,7 +267,7 @@ export function Explorer({ lines, outlets, today, warnings, ignoredSheets }: {
             rows={visible} today={today} sort={sort} onSort={s => { setSort(s); setShown(PAGE); }}
             filters={colFilters} onFilters={f => { setColFilters(f); setShown(PAGE); }} options={colOptions}
             shown={shown} onMore={() => setShown(n => n + PAGE)}
-            open={open}
+            open={open} docNos={docNoSet}
             onToggle={key => setOpen(prev => { const n = new Set(prev); if (!n.delete(key)) n.add(key); return n; })}
           />
         )}
