@@ -5,7 +5,7 @@ import {
   type Filters, type GroupKey, type Line, type OutletRef, type OutletRow,
 } from "@/lib/consignment/analyze";
 import { Attention } from "./attention";
-import { OutletTable, type Sort, type SortKey } from "./outlet-table";
+import { NO_COL_FILTERS, OutletTable, type ColFilters, type ColOptions, type Sort } from "./outlet-table";
 import { ShelfLife } from "./shelf-life";
 
 type Status = "all" | "holding" | "refresh" | "old" | "clearance" | "empty";
@@ -36,6 +36,7 @@ export function Explorer({ lines, outlets, today, warnings, ignoredSheets }: {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<Status>("all");
   const [sort, setSort] = useState<Sort>({ key: "oldest", dir: "desc" });
+  const [colFilters, setColFilters] = useState<ColFilters>(NO_COL_FILTERS);
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [shown, setShown] = useState(PAGE);
 
@@ -65,17 +66,38 @@ export function Explorer({ lines, outlets, today, warnings, ignoredSheets }: {
 
   const counts = useMemo(() => Object.fromEntries(STATUSES.map(s => [s.key, rows.filter(s.test).length])) as Record<Status, number>, [rows]);
 
+  // Choices offered in the column menus: every outlet in view before the column filters apply.
+  const colOptions = useMemo<ColOptions>(() => {
+    const tally = (xs: string[]) => {
+      const m = new Map<string, number>();
+      for (const x of xs) if (x) m.set(x, (m.get(x) ?? 0) + 1);
+      return [...m.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([value, count]) => ({ value, count }));
+    };
+    return { outlets: tally(rows.map(r => r.name)), owners: tally(rows.flatMap(r => r.owners)), states: tally(rows.map(r => r.state)) };
+  }, [rows]);
+
+  const colActive = colFilters.outlets.size + colFilters.owners.size + colFilters.states.size > 0 || colFilters.min !== "" || colFilters.max !== "";
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     const test = STATUSES.find(s => s.key === status)!.test;
+    const lo = colFilters.min === "" ? null : Number(colFilters.min);
+    const hi = colFilters.max === "" ? null : Number(colFilters.max);
     const out = rows.filter(r => {
       if (!test(r)) return false;
+      if (colFilters.outlets.size && !colFilters.outlets.has(r.name)) return false;
+      if (colFilters.owners.size && !r.owners.some(o => colFilters.owners.has(o))) return false;
+      if (colFilters.states.size && !colFilters.states.has(r.state)) return false;
+      if (lo !== null && r.units < lo) return false;
+      if (hi !== null && r.units > hi) return false;
       if (!q) return true;
       return [r.name, r.town, r.state, ...r.owners, ...r.lines.map(l => l.csgNo ?? "")].some(t => t.toLowerCase().includes(q));
     });
     const dir = sort.dir === "asc" ? 1 : -1;
     return out.sort((a, b) => {
       if (sort.key === "name") return dir * a.name.localeCompare(b.name);
+      if (sort.key === "owner") return dir * (a.owners[0] ?? "").localeCompare(b.owners[0] ?? "") || a.name.localeCompare(b.name);
+      if (sort.key === "state") return dir * a.state.localeCompare(b.state) || a.name.localeCompare(b.name);
       if (sort.key === "units") return dir * (a.units - b.units) || a.name.localeCompare(b.name);
       // Outlets with nothing out have no age; keep them last whichever way it sorts.
       if (a.oldestDays === null && b.oldestDays === null) return a.name.localeCompare(b.name);
@@ -83,14 +105,10 @@ export function Explorer({ lines, outlets, today, warnings, ignoredSheets }: {
       if (b.oldestDays === null) return -1;
       return dir * (a.oldestDays - b.oldestDays) || a.name.localeCompare(b.name);
     });
-  }, [rows, query, status, sort]);
+  }, [rows, query, status, sort, colFilters]);
 
   const active = filters.owner || filters.state || filters.product;
   const setFilter = (k: keyof Filters, v: string) => { setFilters(f => ({ ...f, [k]: v })); setShown(PAGE); };
-
-  function onSort(key: SortKey) {
-    setSort(s => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "name" ? "asc" : "desc" }));
-  }
 
   function pickOutlet(name: string) {
     setQuery(name);
@@ -191,6 +209,14 @@ export function Explorer({ lines, outlets, today, warnings, ignoredSheets }: {
             <h2 id="outlets-h" className="font-display text-lg font-semibold text-ink">Outlets</h2>
             <p className="text-sm text-ink-2" role="status">
               {fmtInt(visible.length)} of {fmtInt(rows.length)} outlets. Open a row to see its CSGs.
+              {colActive && (
+                <button
+                  type="button" onClick={() => setColFilters(NO_COL_FILTERS)}
+                  className="ml-2 rounded font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                >
+                  Clear column filters
+                </button>
+              )}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -228,14 +254,16 @@ export function Explorer({ lines, outlets, today, warnings, ignoredSheets }: {
             No outlets match.{" "}
             <button
               type="button" className="font-semibold text-brand hover:underline"
-              onClick={() => { setQuery(""); setStatus("all"); setFilters(NO_FILTERS); }}
+              onClick={() => { setQuery(""); setStatus("all"); setFilters(NO_FILTERS); setColFilters(NO_COL_FILTERS); }}
             >
               Reset search and filters
             </button>
           </p>
         ) : (
           <OutletTable
-            rows={visible} today={today} sort={sort} onSort={onSort} shown={shown} onMore={() => setShown(n => n + PAGE)}
+            rows={visible} today={today} sort={sort} onSort={s => { setSort(s); setShown(PAGE); }}
+            filters={colFilters} onFilters={f => { setColFilters(f); setShown(PAGE); }} options={colOptions}
+            shown={shown} onMore={() => setShown(n => n + PAGE)}
             open={open}
             onToggle={key => setOpen(prev => { const n = new Set(prev); if (!n.delete(key)) n.add(key); return n; })}
           />
