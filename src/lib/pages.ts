@@ -17,10 +17,10 @@ export type WarehousePage = {
 export const PAGES: WarehousePage[] = [
   {
     href: "/consignment",
-    title: "Customer Consignment",
-    short: "Consignment",
-    description: "Stock held at customer outlets on consignment — balances per outlet and product, movements and reconciliation.",
-    status: "shell",
+    title: "ECP Consignment",
+    short: "ECP Consignment",
+    description: "Stock held at ECP outlets on consignment — what each outlet holds, how long it has been there, and what needs refreshing.",
+    status: "ready",
   },
   {
     href: "/po-conversion",
