@@ -59,7 +59,7 @@ export class ConsignmentError extends Error {}
 
 // ---------- cell helpers ----------
 
-function cellValue(cell: Cell): unknown {
+export function cellValue(cell: Cell): unknown {
   // A merged range repeats its top-left value in every cell; keep only the top-left.
   if (cell.isMerged && cell.master.address !== cell.address) return null;
   const v: CellValue = cell.value;
@@ -70,7 +70,7 @@ function cellValue(cell: Cell): unknown {
   return null;
 }
 
-const text = (v: unknown): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "").replace(/\s+/g, " ").trim();
+export const text = (v: unknown): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "").replace(/\s+/g, " ").trim();
 
 // A merged label (the product group name) lives in the top-left cell only.
 function labelAt(ws: Worksheet, row: number, cols: number[]): string {

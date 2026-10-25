@@ -5,7 +5,7 @@
 // Models for the four pages land here once their source files are confirmed.
 
 generator client {
-  provider        = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -61,15 +61,15 @@ model SmtpServer {
 
 // One row per upload of a Stock Issue / Stock Receive listing.
 model ExchangeImport {
-  id          BigInt   @id @default(autoincrement())
+  id          BigInt        @id @default(autoincrement())
   kind        String // "issue" | "receive"
-  fileName    String   @default("") @map("file_name")
-  dateFrom    DateTime? @map("date_from") @db.Date
-  dateTo      DateTime? @map("date_to") @db.Date
-  rowsAdded   Int      @default(0) @map("rows_added")
-  rowsUpdated Int      @default(0) @map("rows_updated")
-  uploadedAt  DateTime @default(now()) @map("uploaded_at")
-  uploadedBy  String?  @map("uploaded_by")
+  fileName    String        @default("") @map("file_name")
+  dateFrom    DateTime?     @map("date_from") @db.Date
+  dateTo      DateTime?     @map("date_to") @db.Date
+  rowsAdded   Int           @default(0) @map("rows_added")
+  rowsUpdated Int           @default(0) @map("rows_updated")
+  uploadedAt  DateTime      @default(now()) @map("uploaded_at")
+  uploadedBy  String?       @map("uploaded_by")
   txns        ExchangeTxn[]
 
   @@map("exchange_import")
@@ -79,29 +79,29 @@ model ExchangeImport {
 // One row per document line of the daily listings. `location` is the customer.
 // Overdue exchanges are derived from these rows (src/lib/exchange/match.ts).
 model ExchangeTxn {
-  id          BigInt    @id @default(autoincrement())
+  id          BigInt              @id @default(autoincrement())
   kind        String // "issue" | "receive"
-  docNo       String    @map("doc_no")
-  docDate     DateTime  @map("doc_date") @db.Date
-  adjType     String    @default("") @map("adj_type")
+  docNo       String              @map("doc_no")
+  docDate     DateTime            @map("doc_date") @db.Date
+  adjType     String              @default("") @map("adj_type")
   location    String
   reference   String?
-  createdBy   String?   @map("created_by")
-  netAmount   Decimal?  @map("net_amount") @db.Decimal(14, 2)
-  lineNo      Int       @map("line_no")
-  stockId     String    @map("stock_id")
-  description String    @default("")
-  mdaNo       String?   @map("mda_no")
+  createdBy   String?             @map("created_by")
+  netAmount   Decimal?            @map("net_amount") @db.Decimal(14, 2)
+  lineNo      Int                 @map("line_no")
+  stockId     String              @map("stock_id")
+  description String              @default("")
+  mdaNo       String?             @map("mda_no")
   brand       String?
   power       String?
   expire      String? // YYYYMM as printed on the listing
   quantity    Int
   uom         String?
-  unitPrice   Decimal?  @map("unit_price") @db.Decimal(14, 2)
-  amount      Decimal?  @db.Decimal(14, 2)
-  importId    BigInt?   @map("import_id")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+  unitPrice   Decimal?            @map("unit_price") @db.Decimal(14, 2)
+  amount      Decimal?            @db.Decimal(14, 2)
+  importId    BigInt?             @map("import_id")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @default(now()) @updatedAt @map("updated_at")
   import      ExchangeImport?     @relation(fields: [importId], references: [id], onDelete: SetNull)
   resolution  ExchangeResolution?
 
@@ -128,16 +128,16 @@ model ExchangeResolution {
 // One row per upload of the ECP consignment workbook. Only the latest upload's
 // outlets and lines are kept; older rows are replaced when a new file arrives.
 model ConsignmentImport {
-  id            BigInt   @id @default(autoincrement())
-  fileName      String   @default("") @map("file_name")
-  outlets       Int      @default(0)
-  lines         Int      @default(0)
-  units         Int      @default(0)
-  sheets        String[] @default([])
-  ignoredSheets String[] @default([]) @map("ignored_sheets")
-  warnings      String[] @default([])
-  uploadedAt    DateTime @default(now()) @map("uploaded_at")
-  uploadedBy    String?  @map("uploaded_by")
+  id            BigInt              @id @default(autoincrement())
+  fileName      String              @default("") @map("file_name")
+  outlets       Int                 @default(0)
+  lines         Int                 @default(0)
+  units         Int                 @default(0)
+  sheets        String[]            @default([])
+  ignoredSheets String[]            @default([]) @map("ignored_sheets")
+  warnings      String[]            @default([])
+  uploadedAt    DateTime            @default(now()) @map("uploaded_at")
+  uploadedBy    String?             @map("uploaded_by")
   outletRows    ConsignmentOutlet[]
   lineRows      ConsignmentLine[]
 
@@ -147,13 +147,13 @@ model ConsignmentImport {
 
 // Every outlet the workbook lists, including those holding nothing.
 model ConsignmentOutlet {
-  id       BigInt @id @default(autoincrement())
-  importId BigInt @map("import_id")
+  id       BigInt            @id @default(autoincrement())
+  importId BigInt            @map("import_id")
   sheet    String
-  rowNo    Int    @map("row_no")
+  rowNo    Int               @map("row_no")
   owner    String
-  state    String @default("")
-  town     String @default("")
+  state    String            @default("")
+  town     String            @default("")
   outlet   String
   import   ConsignmentImport @relation(fields: [importId], references: [id], onDelete: Cascade)
 
@@ -164,24 +164,66 @@ model ConsignmentOutlet {
 
 // One CSG (date, number, quantity) of one product at one outlet.
 model ConsignmentLine {
-  id           BigInt    @id @default(autoincrement())
-  importId     BigInt    @map("import_id")
+  id           BigInt            @id @default(autoincrement())
+  importId     BigInt            @map("import_id")
   sheet        String
-  rowNo        Int       @map("row_no")
+  rowNo        Int               @map("row_no")
   owner        String
-  state        String    @default("")
-  town         String    @default("")
+  state        String            @default("")
+  town         String            @default("")
   outlet       String
   product      String
   family       String
-  csgNo        String?   @map("csg_no")
-  csgDate      DateTime? @map("csg_date") @db.Date
+  csgNo        String?           @map("csg_no")
+  csgDate      DateTime?         @map("csg_date") @db.Date
   qty          Int
-  needsRefresh Boolean   @default(false) @map("needs_refresh")
+  needsRefresh Boolean           @default(false) @map("needs_refresh")
   tag          String? // "new" | "adjusted" | "clearance"
   import       ConsignmentImport @relation(fields: [importId], references: [id], onDelete: Cascade)
 
   @@index([importId])
   @@map("consignment_line")
+  @@schema("warehouse")
+}
+
+// One ERP "CONSIGNMENT" document (a CSG number): who it went to and when.
+// Re-uploading a CSG replaces it.
+model ConsignmentDoc {
+  id           BigInt               @id @default(autoincrement())
+  csgNo        String               @unique @map("csg_no")
+  docDate      DateTime?            @map("doc_date") @db.Date
+  toCounter    String               @default("") @map("to_counter")
+  fromCounter  String               @default("") @map("from_counter")
+  salesperson  String               @default("")
+  createdBy    String               @default("") @map("created_by")
+  printedTotal Int?                 @map("printed_total")
+  lineTotal    Int                  @map("line_total")
+  remark       String               @default("")
+  fileName     String               @default("") @map("file_name")
+  uploadedAt   DateTime             @default(now()) @map("uploaded_at")
+  uploadedBy   String?              @map("uploaded_by")
+  lines        ConsignmentDocLine[]
+
+  @@map("consignment_doc")
+  @@schema("warehouse")
+}
+
+// One box on a CSG document: colour (in the description), power, expiry, quantity.
+model ConsignmentDocLine {
+  id          BigInt         @id @default(autoincrement())
+  docId       BigInt         @map("doc_id")
+  itemNo      Int            @map("item_no")
+  stockId     String         @map("stock_id")
+  description String
+  power       String?
+  extra       String?
+  expire      String? // YYYYMM, as printed
+  mdaNo       String?        @map("mda_no")
+  qty         Int
+  uom         String         @default("BOX")
+  doc         ConsignmentDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+
+  @@index([docId])
+  @@map("consignment_doc_line")
   @@schema("warehouse")
 }

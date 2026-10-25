@@ -1,7 +1,9 @@
 "use client";
+import { useId, useState } from "react";
 import { ageText, fmtDate, fmtInt, type OutletRow, type Tag } from "@/lib/consignment/analyze";
 import { BAND_BG, BAND_LABEL } from "./shelf-life";
 import { ColumnMenu } from "./column-menu";
+import { CsgDetails } from "./csg-details";
 
 export type SortKey = "oldest" | "units" | "name" | "owner" | "state";
 export type Sort = { key: SortKey; dir: "asc" | "desc" };
@@ -19,7 +21,7 @@ const TAG_NOTE: Record<Tag, string> = {
 
 const th = "whitespace-nowrap px-3 py-2 text-left text-sm font-semibold text-ink-2";
 
-export function OutletTable({ rows, today, sort, onSort, filters, onFilters, options, open, onToggle, shown, onMore }: {
+export function OutletTable({ rows, today, sort, onSort, filters, onFilters, options, open, onToggle, shown, onMore, docNos }: {
   rows: OutletRow[];
   today: string;
   sort: Sort;
@@ -31,6 +33,7 @@ export function OutletTable({ rows, today, sort, onSort, filters, onFilters, opt
   onToggle: (key: string) => void;
   shown: number;
   onMore: () => void;
+  docNos: Set<string>;
 }) {
   const ariaSort = (k: SortKey) => (sort.key === k ? (sort.dir === "asc" ? "ascending" : "descending") : "none");
   const menu = { sort, onSort };
@@ -131,31 +134,16 @@ export function OutletTable({ rows, today, sort, onSort, filters, onFilters, opt
                             <thead>
                               <tr className="border-b border-line">
                                 <th className={th}>Product</th><th className={th}>CSG no</th><th className={th}>CSG date</th>
-                                <th className={th}>Age</th><th className={`${th} text-right`}>Units</th><th className={th}>Note</th>
+                                <th className={th}>Age</th><th className={`${th} text-right`}>Units</th><th className={th}>Note</th><th className={th}><span className="sr-only">Details</span></th>
                               </tr>
                             </thead>
                             <tbody>
                               {r.lines.map((l, i) => (
-                                <tr key={i} className="border-b border-line last:border-0">
-                                  <td className="px-3 py-1.5 text-sm text-ink">{l.product}</td>
-                                  <td className="px-3 py-1.5 font-mono text-[0.8125rem] text-ink-2">{l.csgNo ?? "Not recorded"}</td>
-                                  <td className="px-3 py-1.5 text-sm text-ink-2">{l.csgDate ? fmtDate(l.csgDate) : "Not recorded"}</td>
-                                  <td className="px-3 py-1.5 text-sm">
-                                    <span className="inline-flex items-center gap-1.5 tabular-nums text-ink-2">
-                                      <span aria-hidden title={BAND_LABEL[l.band]} className={`h-2.5 w-2.5 rounded-sm ${BAND_BG[l.band]}`} />
-                                      {ageText(l.days)}
-                                    </span>
-                                  </td>
-                                  <td className="px-3 py-1.5 text-right text-sm font-semibold tabular-nums text-ink">{fmtInt(l.qty)}</td>
-                                  <td className="px-3 py-1.5">
-                                    <div className="flex flex-wrap gap-1">
-                                      {l.needsRefresh && <Chip tone="danger">Needs refresh</Chip>}
-                                      {l.tag === "clearance" && <Chip tone="warn">{TAG_NOTE.clearance}</Chip>}
-                                      {l.tag === "adjusted" && <Chip tone="info">{TAG_NOTE.adjusted}</Chip>}
-                                      {l.tag === "new" && <Chip tone="ok">{TAG_NOTE.new}</Chip>}
-                                    </div>
-                                  </td>
-                                </tr>
+                                <LineRow
+                                  key={i} l={l}
+                                  hasDoc={!!l.csgNo && docNos.has(l.csgNo)}
+                                  csgQty={l.csgNo ? r.lines.filter(x => x.csgNo === l.csgNo).reduce((n, x) => n + x.qty, 0) : l.qty}
+                                />
                               ))}
                             </tbody>
                           </table>
@@ -181,6 +169,57 @@ export function OutletTable({ rows, today, sort, onSort, filters, onFilters, opt
         </div>
       )}
     </div>
+  );
+}
+
+type OutletLine = OutletRow["lines"][number];
+
+function LineRow({ l, hasDoc, csgQty }: { l: OutletLine; hasDoc: boolean; csgQty: number }) {
+  const [show, setShow] = useState(false);
+  const panel = useId();
+  return (
+    <>
+      <tr className={`${show ? "" : "border-b border-line last:border-0"}`}>
+        <td className="px-3 py-1.5 text-sm text-ink">{l.product}</td>
+        <td className="px-3 py-1.5 font-mono text-[0.8125rem] text-ink-2">{l.csgNo ?? "Not recorded"}</td>
+        <td className="px-3 py-1.5 text-sm text-ink-2">{l.csgDate ? fmtDate(l.csgDate) : "Not recorded"}</td>
+        <td className="px-3 py-1.5 text-sm">
+          <span className="inline-flex items-center gap-1.5 tabular-nums text-ink-2">
+            <span aria-hidden title={BAND_LABEL[l.band]} className={`h-2.5 w-2.5 rounded-sm ${BAND_BG[l.band]}`} />
+            {ageText(l.days)}
+          </span>
+        </td>
+        <td className="px-3 py-1.5 text-right text-sm font-semibold tabular-nums text-ink">{fmtInt(l.qty)}</td>
+        <td className="px-3 py-1.5">
+          <div className="flex flex-wrap gap-1">
+            {l.needsRefresh && <Chip tone="danger">Needs refresh</Chip>}
+            {l.tag === "clearance" && <Chip tone="warn">{TAG_NOTE.clearance}</Chip>}
+            {l.tag === "adjusted" && <Chip tone="info">{TAG_NOTE.adjusted}</Chip>}
+            {l.tag === "new" && <Chip tone="ok">{TAG_NOTE.new}</Chip>}
+          </div>
+        </td>
+        <td className="px-3 py-1.5 text-right">
+          {hasDoc ? (
+            <button
+              type="button" aria-expanded={show} aria-controls={panel} onClick={() => setShow(v => !v)}
+              className="whitespace-nowrap rounded-md border border-line-strong px-2.5 py-0.5 text-sm font-semibold text-ink-2 hover:border-brand hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            >
+              {show ? "Hide details" : "Details"}
+            </button>
+          ) : l.csgNo ? (
+            <span className="whitespace-nowrap text-sm text-muted">Not uploaded</span>
+          ) : null}
+        </td>
+      </tr>
+      {show && l.csgNo && (
+        <tr id={panel} className="border-b border-line bg-page last:border-0">
+          <td colSpan={7} className="p-0">
+            {/* w-0 + min-w-full: the grid scrolls inside this box instead of widening the outlet table */}
+            <div className="w-0 min-w-full"><CsgDetails csgNo={l.csgNo} workbookQty={csgQty} /></div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
