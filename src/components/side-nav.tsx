@@ -28,7 +28,7 @@ export function SideNav({ exchangeOverdue = 0 }: { exchangeOverdue?: number }) {
   };
   return (
     <nav className="nav" aria-label="Warehouse pages">
-      {[{ href: "/", short: "Overview" }, ...PAGES].map(link)}
+      {[{ href: "/", short: "Overview" }, ...PAGES, { href: "/files", short: "Upload files" }].map(link)}
       <span className="nav-label">Settings</span>
       {SETTINGS.map(link)}
     </nav>
