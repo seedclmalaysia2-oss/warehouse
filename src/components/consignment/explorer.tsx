@@ -106,7 +106,7 @@ export function Explorer({ lines, outlets, today, warnings, ignoredSheets }: {
       const s = v === null ? "" : String(v);
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const head = ["Owner", "State", "Town", "Outlet", "Product", "CSG no", "CSG date", "Age (days)", "Units", "Needs refresh", "Note"];
+    const head = ["Salesman", "State", "Town", "Outlet", "Product", "CSG no", "CSG date", "Age (days)", "Units", "Needs refresh", "Note"];
     const body = filtered
       .slice()
       .sort((a, b) => a.outlet.localeCompare(b.outlet) || (b.days ?? -1) - (a.days ?? -1))
@@ -126,9 +126,9 @@ export function Explorer({ lines, outlets, today, warnings, ignoredSheets }: {
       {/* ---- filters ---- */}
       <div className="flex flex-wrap items-end gap-x-4 gap-y-3" role="group" aria-label="Filters">
         <label className="flex flex-col gap-1 text-sm font-semibold text-ink-2">
-          Owner
+          Salesman
           <select className={select} value={filters.owner} onChange={e => setFilter("owner", e.target.value)}>
-            <option value="">All owners</option>
+            <option value="">All salesmen</option>
             {options.owners.map(o => <option key={o}>{o}</option>)}
           </select>
         </label>

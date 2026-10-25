@@ -42,7 +42,7 @@ export function OutletTable({ rows, today, sort, onSort, open, onToggle, shown, 
           <thead>
             <tr className="border-b border-line bg-quiet">
               <th className={th} aria-sort={ariaSort("name")}>{sortBtn("name", "Outlet")}</th>
-              <th className={`${th} hidden lg:table-cell`}>Owner</th>
+              <th className={`${th} hidden lg:table-cell`}>Salesman</th>
               <th className={`${th} hidden xl:table-cell`}>State</th>
               <th className={`${th} text-right`} aria-sort={ariaSort("units")}>{sortBtn("units", "Units", true)}</th>
               <th className={`${th} hidden md:table-cell`}>Age of stock</th>

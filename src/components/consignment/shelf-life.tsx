@@ -6,7 +6,7 @@ export const BAND_BG = ["bg-age-1", "bg-age-2", "bg-age-3", "bg-age-4", "age-und
 export const BAND_LABEL = [...BANDS.map(b => b.label), UNDATED.label];
 
 const BY: { key: GroupKey; label: string; noun: string }[] = [
-  { key: "owner", label: "Owner", noun: "owner" },
+  { key: "owner", label: "Salesman", noun: "salesman" },
   { key: "state", label: "State", noun: "state" },
   { key: "product", label: "Product", noun: "product" },
 ];
