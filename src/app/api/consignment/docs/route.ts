@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { getAccess, guardDept } from "@/lib/auth";
+import { docKey } from "@/lib/consignment/analyze";
 import { DocError, parseCsgDocs, type ParsedDocs } from "@/lib/consignment/doc-parse";
 import { saveDocs } from "@/lib/consignment/doc-store";
 
@@ -24,6 +25,23 @@ export async function POST(req: Request) {
   } catch (e) {
     const msg = e instanceof DocError ? e.message : "Could not read that file as an .xlsx document.";
     return Response.json({ error: msg }, { status: 422 });
+  }
+
+  // Sent from an outlet's page: the file must be a CSG that outlet is waiting
+  // for, so a wrong file is turned away rather than filed against the wrong CSG.
+  const expected = String(form?.get("expect") ?? "").split(",").map(s => s.trim()).filter(Boolean);
+  if (expected.length) {
+    const want = new Set(expected.map(docKey));
+    const fits = parsed.docs.filter(d => want.has(docKey(d.csgNo)));
+    const others = parsed.docs.filter(d => !want.has(docKey(d.csgNo))).map(d => d.csgNo);
+    if (!fits.length) {
+      const found = others.join(", ") || "no CSG number";
+      const error = expected.length === 1
+        ? `This file is ${found}, not ${expected[0]}. Nothing was saved.`
+        : `This file is ${found}, which is not listed at this outlet. Nothing was saved.`;
+      return Response.json({ error }, { status: 422 });
+    }
+    parsed = { docs: fits, warnings: [...parsed.warnings, ...others.map(n => `${n} is also in this file but is not at this outlet, so it was left out.`)] };
   }
 
   const access = await getAccess();

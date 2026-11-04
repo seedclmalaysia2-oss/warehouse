@@ -45,7 +45,7 @@ export function DocUploadBox() {
       <h2 className="font-display text-lg font-semibold text-ink">CSG documents</h2>
       <p className="mt-1 max-w-[60ch] text-sm text-ink-2">
         The ERP&apos;s printed CONSIGNMENT .xlsx, one per CSG number. Choose as many as you like at once. They fill the Details
-        button beside each CSG on the consignment page with its colours, powers and quantities. Uploading a CSG again replaces it.
+        button beside each CSG on its outlet's page with its colours, powers and quantities. Uploading a CSG again replaces it.
       </p>
       <label
         onDragOver={e => { e.preventDefault(); setOver(true); }}

@@ -6,7 +6,8 @@ type Result =
   | { ok: true; outlets: number; lines: number; units: number; sheets: { name: string; outlets: number; lines: number }[]; ignoredSheets: string[]; warnings: string[] }
   | { ok: false; error: string };
 
-export function UploadBox() {
+/** `embedded`: shown in a dialog over the page it updates, so there is no page to link back to. */
+export function UploadBox({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
@@ -69,7 +70,7 @@ export function UploadBox() {
                 <ul className="mt-1 list-disc pl-5">{result.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
               </details>
             )}
-            <a href="/consignment" className="mt-3 inline-block font-semibold text-brand hover:underline">See the consignment overview</a>
+            {!embedded && <a href="/consignment" className="mt-3 inline-block font-semibold text-brand hover:underline">See the consignment overview</a>}
           </div>
         )}
       </div>

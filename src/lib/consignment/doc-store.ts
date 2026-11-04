@@ -59,6 +59,19 @@ export async function loadDocNumbers(): Promise<string[]> {
   }
 }
 
+/** When and by whom these CSGs' documents were uploaded. Same never-throws rule as loadDocNumbers. */
+export async function loadDocMeta(csgNos: string[]) {
+  try {
+    const rows = await prisma.consignmentDoc.findMany({
+      where: { csgNo: { in: csgNos } },
+      select: { csgNo: true, fileName: true, uploadedAt: true, uploadedBy: true },
+    });
+    return rows.map(r => ({ csgNo: r.csgNo, fileName: r.fileName, uploadedAt: r.uploadedAt.toISOString(), uploadedBy: r.uploadedBy }));
+  } catch {
+    return [];
+  }
+}
+
 export async function recentDocs(take = 300) {
   const rows = await prisma.consignmentDoc.findMany({ orderBy: { uploadedAt: "desc" }, take });
   return rows.map(r => ({ csgNo: r.csgNo, toCounter: r.toCounter, lineTotal: r.lineTotal, fileName: r.fileName, uploadedAt: r.uploadedAt, uploadedBy: r.uploadedBy }));
