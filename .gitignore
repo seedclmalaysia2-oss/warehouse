@@ -11,3 +11,4 @@ next-env.d.ts
 # Business documents (HQ order sheets etc.) stay out of this public repo.
 *.xlsx
 *.xls
+*.csv

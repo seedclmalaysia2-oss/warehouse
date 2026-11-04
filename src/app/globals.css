@@ -707,3 +707,42 @@ a.submit { display: block; text-align: center; text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   .grow-x { animation: none; }
 }
+
+/* ---------- theme toggle ---------- */
+
+/* Native controls and scrollbars follow the chosen theme too. */
+:root { color-scheme: light dark; }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+.theme-toggle {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-quiet);
+}
+
+.theme-toggle button {
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.theme-toggle button:hover { color: var(--text-primary); }
+.theme-toggle button[aria-pressed="true"] { background: var(--tile-ink); color: #f4f7ff; }
+.theme-toggle button:focus-visible { outline: 2px solid var(--ink-600); outline-offset: 1px; }
+
+/* Sign-in page: tucked into the top-right corner. */
+.login-theme { position: fixed; top: 16px; right: 16px; }
+
+/* SEED contact lens logo in place of the letter badge */
+.login-card .login-logo { display: block; width: 180px; max-width: 70%; height: auto; margin: 0 auto 2px; border-radius: 12px; background: #fff; }
+.brand .brand-logo { flex: none; width: 64px; height: auto; border-radius: 8px; background: #fff; }
