@@ -4,6 +4,7 @@ import { overdueCount } from "@/lib/exchange/store";
 import { NoAccess } from "@/components/no-access";
 import { SideNav } from "@/components/side-nav";
 import { SignOutButton } from "@/components/sign-out-button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 // Never prerender: every page depends on who is asking.
 export const dynamic = "force-dynamic";
@@ -20,7 +21,8 @@ export default async function DashLayout({ children }: { children: React.ReactNo
     <div className="shell">
       <aside className="sidebar">
         <a className="brand" href="/">
-          <span className="mark">SC</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="brand-logo" src="/seed-logo.jpg" alt="SEED contact lens" width={64} height={37} />
           <span>
             <span className="brand-name">Warehouse</span>
             <span className="brand-sub">SEED CL Malaysia</span>
@@ -29,6 +31,7 @@ export default async function DashLayout({ children }: { children: React.ReactNo
         <SideNav exchangeOverdue={exchangeOverdue} />
         <div className="sidebar-foot">
           <a className="hub-link" href="https://seedclmalaysiastore.com">← All dashboards</a>
+          <ThemeToggle />
           <div className="who">{access.staff.full_name ?? access.staff.email}</div>
           <SignOutButton />
         </div>

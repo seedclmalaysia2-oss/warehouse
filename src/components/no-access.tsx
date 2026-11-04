@@ -4,7 +4,8 @@ export function NoAccess({ email }: { email: string }) {
   return (
     <div className="login-wrap">
       <div className="login-card">
-        <div className="mark">SC</div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="login-logo" src="/seed-logo.jpg" alt="SEED contact lens" width={180} height={105} />
         <h1>No access to this dashboard</h1>
         <p>
           You're signed in as <strong>{email}</strong>, but your account isn't on

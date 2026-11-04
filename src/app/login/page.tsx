@@ -2,6 +2,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type Mode = "signin" | "forgot" | "reset";
 
@@ -119,8 +120,10 @@ function LoginForm() {
 
   return (
     <div className="login-wrap">
+      <div className="login-theme"><ThemeToggle /></div>
       <form className="login-card" onSubmit={submit}>
-        <div className="mark">SC</div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="login-logo" src="/seed-logo.jpg" alt="SEED contact lens" width={180} height={105} />
         <h1>{mode === "reset" ? "Set a new password" : "SEED CL Malaysia"}</h1>
         <p>
           {mode === "signin" && "Sign in with your work email — the same account you use for the sales dashboard and the hub."}
