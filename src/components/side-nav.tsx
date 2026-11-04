@@ -2,6 +2,8 @@
 import { usePathname } from "next/navigation";
 import { PAGES } from "@/lib/pages";
 
+const OUTLETS = { href: "/consignment/outlets", short: "Outlets", sub: true };
+
 const SETTINGS = [
   { href: "/email-settings", short: "Email settings" },
   { href: "/email-settings/server", short: "Sending server", sub: true },
@@ -12,7 +14,7 @@ export function SideNav({ exchangeOverdue = 0 }: { exchangeOverdue?: number }) {
   const link = (p: { href: string; short: string; sub?: boolean }) => {
     // Settings links match exactly, so the parent and its sub-page never light up together.
     const exact = p.href === "/" || p.href.startsWith("/email-settings");
-    const active = exact ? path === p.href : path.startsWith(p.href);
+    const active = exact ? path === p.href : path.startsWith(p.href) && !(p.href === "/consignment" && path.startsWith(OUTLETS.href));
     return (
       <a key={p.href} href={p.href} className={[active && "active", p.sub && "sub"].filter(Boolean).join(" ") || undefined}
          aria-current={active ? "page" : undefined}>
@@ -28,7 +30,7 @@ export function SideNav({ exchangeOverdue = 0 }: { exchangeOverdue?: number }) {
   };
   return (
     <nav className="nav" aria-label="Warehouse pages">
-      {[{ href: "/", short: "Overview" }, ...PAGES, { href: "/files", short: "Upload files" }].map(link)}
+      {[{ href: "/", short: "Overview" }, ...PAGES.flatMap(p => (p.href === "/consignment" ? [p, OUTLETS] : [p])), { href: "/files", short: "Upload files" }].map(link)}
       <span className="nav-label">Settings</span>
       {SETTINGS.map(link)}
     </nav>

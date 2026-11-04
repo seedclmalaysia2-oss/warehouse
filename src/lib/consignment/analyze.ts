@@ -212,3 +212,71 @@ export function fmtDate(iso: string | null): string {
 export function todayISO(now = new Date()): string {
   return new Date(now.getTime() + 8 * 3_600_000).toISOString().slice(0, 10);
 }
+
+// ---------- CSG files ----------
+
+/**
+ * The number a CSG's ERP document is filed under. The workbook is typed by hand,
+ * so "CSG03008(1)", "CSF04001" and "CS03207" mean the documents CSG03008,
+ * CSG04001 and CSG03207.
+ */
+export const docKey = (csgNo: string) =>
+  csgNo.toUpperCase().replace(/\s+/g, "").replace(/\(\d+\)$/, "").replace(/^CSF/, "CSG").replace(/^CS(?=\d)/, "CSG");
+
+/** How many of these lines' CSG documents have been uploaded. */
+export function csgFiles(lines: { csgNo: string | null }[], docKeys: Set<string>) {
+  const need = new Set(lines.flatMap(l => (l.csgNo ? [docKey(l.csgNo)] : [])));
+  return { have: [...need].filter(k => docKeys.has(k)).length, need: need.size };
+}
+
+export type CsgGroup = {
+  id: string;
+  csgNo: string | null;
+  docKey: string | null;
+  csgDate: string | null;
+  days: number | null;
+  band: number;
+  units: number;
+  products: { product: string; qty: number }[];
+  needsRefresh: boolean;
+  tags: Tag[];
+};
+
+/** One entry per CSG, oldest first. A CSG can cover several products; a line with no CSG number stands alone. */
+export function groupCsgs(lines: AgedLine[]): CsgGroup[] {
+  const map = new Map<string, CsgGroup>();
+  lines.forEach((l, i) => {
+    const id = l.csgNo ?? `none-${i}`;
+    let g = map.get(id);
+    if (!g) {
+      map.set(id, (g = {
+        id, csgNo: l.csgNo, docKey: l.csgNo ? docKey(l.csgNo) : null, csgDate: l.csgDate, days: l.days, band: l.band,
+        units: 0, products: [], needsRefresh: false, tags: [],
+      }));
+    }
+    g.units += l.qty;
+    g.needsRefresh ||= l.needsRefresh;
+    if (l.tag && !g.tags.includes(l.tag)) g.tags.push(l.tag);
+    const p = g.products.find(x => x.product === l.product);
+    if (p) p.qty += l.qty; else g.products.push({ product: l.product, qty: l.qty });
+  });
+  return [...map.values()].sort((a, b) => (b.days ?? -1) - (a.days ?? -1) || b.units - a.units);
+}
+
+// ---------- links ----------
+
+export const OUTLETS_PATH = "/consignment/outlets";
+
+/** `from` is the outlet list's own query string, so the way back keeps its search and filters. */
+export const outletHref = (key: string, from = "") =>
+  `${OUTLETS_PATH}/${encodeURIComponent(key)}${from ? `?from=${encodeURIComponent(from)}` : ""}`;
+
+export function outletsHref(status: string, f: Filters = NO_FILTERS) {
+  const q = new URLSearchParams();
+  if (status !== "all") q.set("status", status);
+  if (f.owner) q.set("owner", f.owner);
+  if (f.state) q.set("state", f.state);
+  if (f.product) q.set("product", f.product);
+  const s = q.toString();
+  return s ? `${OUTLETS_PATH}?${s}` : OUTLETS_PATH;
+}

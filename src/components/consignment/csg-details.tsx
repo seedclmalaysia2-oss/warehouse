@@ -17,6 +17,8 @@ type Loaded = { doc: Head; matrix: Matrix };
 
 // Details already fetched in this visit, so closing and reopening is instant.
 const cache = new Map<string, Loaded>();
+/** Call after a CSG's document is replaced, so its details are read again. */
+export const forgetDetails = (csgNo: string) => { cache.delete(csgNo); };
 
 /**
  * The colour x power grid for one CSG, read from the uploaded ERP document.

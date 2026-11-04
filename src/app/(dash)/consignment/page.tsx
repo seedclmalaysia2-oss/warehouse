@@ -1,13 +1,14 @@
 import { PAGES } from "@/lib/pages";
-import { fmtDate, todayISO } from "@/lib/consignment/analyze";
+import { todayISO } from "@/lib/consignment/analyze";
 import { loadSnapshot, type Snapshot } from "@/lib/consignment/store";
 import { loadDocNumbers } from "@/lib/consignment/doc-store";
 import { PageHeader } from "@/components/page-header";
 import { Explorer } from "@/components/consignment/explorer";
+import { WorkbookDialog } from "@/components/consignment/workbook-dialog";
 
 const page = PAGES.find(p => p.href === "/consignment")!;
 
-const upload =
+const primary =
   "rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white no-underline transition-opacity hover:opacity-90";
 
 export default async function ConsignmentPage() {
@@ -24,7 +25,8 @@ export default async function ConsignmentPage() {
   return (
     <>
       <PageHeader title={page.title} description={page.description}>
-        <a href="/consignment/import" className={upload}>Upload workbook</a>
+        {snap && <a href="/consignment/outlets" className={primary}>View outlets</a>}
+        {snap && <WorkbookDialog />}
       </PageHeader>
 
       {missingTables ? (
@@ -37,16 +39,15 @@ export default async function ConsignmentPage() {
       ) : !snap ? (
         <div className="needs">
           <strong>No consignment data yet.</strong>
-          <ul>
-            <li><a href="/consignment/import">Upload the consignment workbook</a> to see stock by outlet, salesman, product and age.</li>
-          </ul>
+          <p className="mb-0 mt-2 text-sm text-ink-2">Upload the workbook to see stock by outlet, salesman, product and age.</p>
+          <div className="mt-3"><WorkbookDialog label="Upload workbook" primary /></div>
         </div>
       ) : (
         <>
-          <p className="-mt-2 mb-5 text-sm text-ink-2">
-            From {snap.info.fileName || "the workbook"}, uploaded{" "}
+          <p className="-mt-2 mb-4 text-sm text-muted">
+            From {snap.info.fileName || "the workbook"}, updated{" "}
             {snap.info.uploadedAt.toLocaleString("en-MY", { timeZone: "Asia/Kuala_Lumpur", dateStyle: "medium", timeStyle: "short" })}
-            {snap.info.uploadedBy ? ` by ${snap.info.uploadedBy}` : ""}. Stock age is counted from each CSG date to today, {fmtDate(today)}.
+            {snap.info.uploadedBy ? ` by ${snap.info.uploadedBy}` : ""}.
           </p>
           <Explorer
             lines={snap.lines} outlets={snap.outlets} today={today}

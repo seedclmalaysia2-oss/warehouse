@@ -1,12 +1,13 @@
 "use client";
-import { ageText, fmtInt, type AgedLine } from "@/lib/consignment/analyze";
+import Link from "next/link";
+import { ageText, fmtInt, outletHref, outletKey, outletsHref, type AgedLine, type Filters } from "@/lib/consignment/analyze";
 
-const SHOWN = 6;
+const SHOWN = 5;
 
 // Two short lists for the first thing a person asks of this page: what do I
 // need to go and swap? The workbook's red text is a manual flag, so the second
 // list catches old stock nobody has flagged yet.
-export function Attention({ lines, onPick }: { lines: AgedLine[]; onPick: (outlet: string) => void }) {
+export function Attention({ lines, filters }: { lines: AgedLine[]; filters: Filters }) {
   const byAge = (a: AgedLine, b: AgedLine) => (b.days ?? -1) - (a.days ?? -1) || b.qty - a.qty;
   const flagged = lines.filter(l => l.needsRefresh).sort(byAge);
   const unflagged = lines.filter(l => !l.needsRefresh && l.band === 3).sort(byAge);
@@ -16,21 +17,21 @@ export function Attention({ lines, onPick }: { lines: AgedLine[]; onPick: (outle
       <List
         title="Refresh first"
         note="Marked in red in the workbook"
-        lines={flagged} tone="danger" onPick={onPick}
+        lines={flagged} tone="danger" more={outletsHref("refresh", filters)}
         empty="Nothing is marked for refresh in this view."
       />
       <List
         title="Over 2 years, not marked"
         note="Old enough to check, but not flagged"
-        lines={unflagged} tone="plain" onPick={onPick}
+        lines={unflagged} tone="plain" more={outletsHref("old", filters)}
         empty="No unmarked stock is over 2 years old."
       />
     </section>
   );
 }
 
-function List({ title, note, lines, tone, onPick, empty }: {
-  title: string; note: string; lines: AgedLine[]; tone: "danger" | "plain"; onPick: (o: string) => void; empty: string;
+function List({ title, note, lines, tone, more, empty }: {
+  title: string; note: string; lines: AgedLine[]; tone: "danger" | "plain"; more: string; empty: string;
 }) {
   const units = lines.reduce((s, l) => s + l.qty, 0);
   return (
@@ -50,9 +51,9 @@ function List({ title, note, lines, tone, onPick, empty }: {
         <ul className="mt-2 flex flex-col">
           {lines.slice(0, SHOWN).map((l, i) => (
             <li key={`${l.outlet}|${l.csgNo}|${l.product}|${i}`} className="border-t border-line first:border-t-0">
-              <button
-                type="button" onClick={() => onPick(l.outlet)} title={`Open ${l.outlet} in the outlet list`}
-                className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-2 text-left hover:bg-quiet focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
+              <Link
+                href={outletHref(outletKey(l.outlet))} title={`Open ${l.outlet}`}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-2 text-left no-underline hover:bg-quiet focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
               >
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold text-ink">{l.outlet}</span>
@@ -62,13 +63,16 @@ function List({ title, note, lines, tone, onPick, empty }: {
                   <span className={`block text-sm font-semibold tabular-nums ${tone === "danger" ? "text-danger" : "text-ink"}`}>{ageText(l.days)}</span>
                   <span className="block text-sm tabular-nums text-ink-2">{fmtInt(l.qty)} units</span>
                 </span>
-              </button>
+              </Link>
             </li>
           ))}
         </ul>
       )}
       {lines.length > SHOWN && (
-        <p className="mt-1 text-sm text-muted">Oldest {SHOWN} of {lines.length}. The outlet list below has the rest.</p>
+        <p className="mt-1 text-sm text-muted">
+          Oldest {SHOWN} of {lines.length}.{" "}
+          <Link href={more} className="font-semibold text-ink-2 underline hover:text-ink">See these outlets</Link>
+        </p>
       )}
     </div>
   );
