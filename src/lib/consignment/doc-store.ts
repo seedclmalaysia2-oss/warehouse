@@ -64,9 +64,9 @@ export async function loadDocMeta(csgNos: string[]) {
   try {
     const rows = await prisma.consignmentDoc.findMany({
       where: { csgNo: { in: csgNos } },
-      select: { csgNo: true, fileName: true, uploadedAt: true, uploadedBy: true },
+      select: { csgNo: true, fileName: true, uploadedAt: true, uploadedBy: true, lineTotal: true },
     });
-    return rows.map(r => ({ csgNo: r.csgNo, fileName: r.fileName, uploadedAt: r.uploadedAt.toISOString(), uploadedBy: r.uploadedBy }));
+    return rows.map(r => ({ csgNo: r.csgNo, fileName: r.fileName, uploadedAt: r.uploadedAt.toISOString(), uploadedBy: r.uploadedBy, lineTotal: r.lineTotal }));
   } catch {
     return [];
   }

@@ -263,6 +263,15 @@ export function groupCsgs(lines: AgedLine[]): CsgGroup[] {
   return [...map.values()].sort((a, b) => (b.days ?? -1) - (a.days ?? -1) || b.units - a.units);
 }
 
+/** One outlet from the snapshot, with ages worked out. Undefined when the workbook does not list it. */
+export function findOutlet(lines: Line[], outlets: OutletRef[], key: string, today: string): OutletRow | undefined {
+  return buildOutletRows(
+    lines.filter(l => outletKey(l.outlet) === key).map(l => withAge(l, today)),
+    outlets.filter(o => outletKey(o.outlet) === key),
+    NO_FILTERS,
+  )[0];
+}
+
 // ---------- links ----------
 
 export const OUTLETS_PATH = "/consignment/outlets";

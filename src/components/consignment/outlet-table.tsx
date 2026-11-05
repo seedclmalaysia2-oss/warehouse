@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { ageText, csgFiles, fmtInt, outletHref, type OutletRow, type Tag } from "@/lib/consignment/analyze";
 import { BAND_BG, BAND_LABEL } from "./shelf-life";
+import { ChecklistPills } from "./checklist-pills";
 import { ColumnMenu } from "./column-menu";
 
 export type SortKey = "oldest" | "units" | "name" | "owner" | "state";
@@ -47,6 +48,7 @@ export function OutletTable({ rows, sort, onSort, filters, onFilters, options, d
                   onSelected={s => onFilters({ ...filters, outlets: s })}
                 />
               </th>
+              <th className={th}>Checklist</th>
               <th className={`${th} hidden lg:table-cell`} aria-sort={ariaSort("owner")}>
                 <ColumnMenu
                   {...menu} kind="list" label="Salesman" sortKey="owner" sortWords={["A to Z", "Z to A"]}
@@ -98,6 +100,10 @@ export function OutletTable({ rows, sort, onSort, filters, onFilters, options, d
                         <span className="lg:hidden">{r.owners.length ? ` (${r.owners.join(", ")})` : ""}</span>
                       </span>
                     </Link>
+                  </td>
+                  {/* Raised above the row's stretched link, so the pills don't open the outlet. */}
+                  <td className="relative z-10 px-3 py-2.5">
+                    <ChecklistPills compact outletKey={r.key} outletName={r.name} />
                   </td>
                   <td className="hidden px-3 py-2.5 text-sm text-ink-2 lg:table-cell">{r.owners.join(", ") || "None"}</td>
                   <td className="hidden px-3 py-2.5 text-sm text-ink-2 xl:table-cell">{r.state}</td>
