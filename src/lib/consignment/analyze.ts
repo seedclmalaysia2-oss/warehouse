@@ -272,6 +272,15 @@ export function findOutlet(lines: Line[], outlets: OutletRef[], key: string, tod
   )[0];
 }
 
+export type OutletChoice = { key: string; name: string; place: string; units: number };
+
+/** Every outlet, A to Z, for picking one. */
+export function outletChoices(lines: Line[], outlets: OutletRef[], today: string): OutletChoice[] {
+  return buildOutletRows(lines.map(l => withAge(l, today)), outlets, NO_FILTERS)
+    .map(r => ({ key: r.key, name: r.name, place: [r.town, r.state].filter(Boolean).join(", "), units: r.units }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 // ---------- links ----------
 
 export const OUTLETS_PATH = "/consignment/outlets";

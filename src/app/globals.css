@@ -539,6 +539,7 @@
 
 .page-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 16px;
   padding-bottom: 20px;
@@ -546,7 +547,7 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.page-head > div:first-child { flex: 1 1 auto; }
+.page-head > div:first-child { flex: 1 1 18rem; }
 
 .page-head h1 {
   margin: 0;
@@ -557,7 +558,7 @@
 }
 
 .page-head p { margin: 4px 0 0; color: var(--text-secondary); max-width: 64ch; }
-.page-actions { flex: none; display: flex; gap: 8px; }
+.page-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
 
 .panel {
   padding: 18px;

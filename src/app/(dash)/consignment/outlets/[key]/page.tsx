@@ -1,12 +1,13 @@
 import Link from "next/link";
 import {
-  OUTLETS_PATH, ageText, csgFiles, docKey, findOutlet, fmtInt, groupCsgs, outletKey, todayISO,
+  OUTLETS_PATH, ageText, csgFiles, docKey, findOutlet, fmtInt, groupCsgs, outletChoices, outletKey, todayISO,
 } from "@/lib/consignment/analyze";
 import { loadSnapshot, type Snapshot } from "@/lib/consignment/store";
 import { loadDocMeta } from "@/lib/consignment/doc-store";
 import { PageHeader } from "@/components/page-header";
 import { ChecklistPills } from "@/components/consignment/checklist-pills";
 import { OutletFiles, type DocMeta } from "@/components/consignment/outlet-files";
+import { OutletSwitcher } from "@/components/consignment/outlet-switcher";
 import { AgeLegend, AgeMix } from "@/components/consignment/outlet-table";
 
 // Never cache: a file just uploaded must show on its row straight away.
@@ -63,6 +64,7 @@ export default async function OutletPage({ params, searchParams }: {
     <>
       {crumbs(row.name)}
       <PageHeader title={row.name} description={[place, owners && `Salesman: ${owners}`].filter(Boolean).join(". ") || "ECP outlet"}>
+        <OutletSwitcher outlets={outletChoices(snap!.lines, snap!.outlets, today)} current={row.key} from={typeof from === "string" ? from : ""} />
         <ChecklistPills outletKey={row.key} outletName={row.name} />
       </PageHeader>
 
