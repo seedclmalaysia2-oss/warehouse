@@ -334,29 +334,64 @@ function parseDocDate(s: string): { csgNo: string | null; csgDate: string | null
   return { csgNo: n ? n[1].replace(/\s+/g, "").toUpperCase() : null, csgDate: null };
 }
 
-function parseRecentRow(ws: Worksheet, rowNo: number, sheet: string, warn: (m: string) => void): { line: ParsedLine; outlet: ParsedOutlet } | null {
+// The recent block's columns move between versions of the workbook (it has
+// sat in D:H and in B:H, and later gained "billing" and "CSG balance"), so its
+// columns are found from its header row, not by position.
+type RecentCols = { sales: number; outlet: number; doc: number; remark: number; qty: number; balance: number | null };
+
+function findRecentHeader(ws: Worksheet, rowNo: number): RecentCols | null {
+  const found = new Map<string, number>();
+  ws.getRow(rowNo).eachCell({ includeEmpty: false }, (cell, col) => {
+    const t = text(cellValue(cell)).toLowerCase();
+    if (t && !found.has(t)) found.set(t, col);
+  });
+  const col = (re: RegExp) => { for (const [t, c] of found) if (re.test(t)) return c; return null; };
+  const sales = col(/^salesm/);
+  const outlet = col(/^location$/);
+  if (!sales || !outlet) return null;
+  const doc = col(/^doc/) ?? outlet + 1;
+  const remark = col(/^remark/) ?? doc + 1;
+  return { sales, outlet, doc, remark, qty: col(/^qty$/) ?? remark + 1, balance: col(/balance/) };
+}
+
+type RecentLast = { outlet: string; salesperson: string };
+
+function parseRecentRow(ws: Worksheet, rowNo: number, sheet: string, cols: RecentCols, last: RecentLast, warn: (m: string) => void): { line: ParsedLine; outlet: ParsedOutlet } | null {
   const row = ws.getRow(rowNo);
-  const outlet = cleanOutlet(text(cellValue(row.getCell(5))));
-  const qtyCell = row.getCell(8);
-  const qtyRaw = cellValue(qtyCell);
-  const qty = typeof qtyRaw === "number" ? Math.round(qtyRaw) : Number(text(qtyRaw));
-  if (!outlet) return null;
-  if (!Number.isFinite(qty) || qty <= 0) {
-    warn(`${sheet} row ${rowNo}: ignored recent CSG for "${outlet}" with no quantity.`);
-    return null;
-  }
-  const docCell = row.getCell(6);
+  const docCell = row.getCell(cols.doc);
   const docVal = cellValue(docCell);
   const { csgNo, csgDate } = parseDocDate(text(docVal));
-  const remark = text(cellValue(row.getCell(7))).toUpperCase();
+  // A row with no document is a blank spacer or a stray label, not a CSG.
+  if (!csgNo) return null;
+  // A second CSG for the same outlet leaves the outlet cells empty.
+  const outlet = cleanOutlet(text(cellValue(row.getCell(cols.outlet)))) || last.outlet;
+  const salesRaw = text(cellValue(row.getCell(cols.sales)));
+  if (!outlet) return null;
+  last.outlet = outlet;
+  if (salesRaw) last.salesperson = salesRaw;
+
+  // Stock still held is the balance when the block has one; otherwise the quantity sent.
+  const numeric = (v: unknown) => (typeof v === "number" ? Math.round(v) : text(v) === "" ? NaN : Number(text(v)));
+  const sent = numeric(cellValue(row.getCell(cols.qty)));
+  const balance = cols.balance ? numeric(cellValue(row.getCell(cols.balance))) : NaN;
+  const qty = Number.isFinite(balance) ? balance : sent;
+  const qtyCell = row.getCell(Number.isFinite(balance) && cols.balance ? cols.balance : cols.qty);
+  if (!Number.isFinite(qty)) {
+    warn(`${sheet} row ${rowNo}: ignored recent CSG ${csgNo} for "${outlet}" with no quantity.`);
+    return null;
+  }
+  // Everything has been billed: nothing is left at the outlet.
+  if (qty <= 0) return null;
+
+  const remark = text(cellValue(row.getCell(cols.remark))).toUpperCase();
   const product = remark === "MC" ? { product: "Monthly Color (box not stated)", family: "Monthly Color" }
     : remark === "EC" ? { product: "Eye Coffret (type not stated)", family: "Eye Coffret" }
     : { product: remark ? title(remark) : "Unlabelled product", family: "Other" };
   const ctx: Context = {
-    sheet, row: rowNo, salesperson: salesName(text(cellValue(row.getCell(4))), sheet),
+    sheet, row: rowNo, salesperson: salesName(salesRaw || last.salesperson, sheet),
     state: "", town: "", outlet, origin: "recent",
   };
-  const items: Item[] = [{ kind: "qty", col: 8, value: qty, cell: qtyCell }];
+  const items: Item[] = [{ kind: "qty", col: cols.qty, value: qty, cell: qtyCell }];
   const line = toLine(ctx, product, items)!;
   line.csgNo = csgNo;
   line.csgDate = csgDate ? sane(csgDate) : null;
@@ -390,16 +425,19 @@ export function parseConsignment(wb: Workbook): ParsedConsignment {
 
     let sheetLines = 0;
     let sheetOutlets = 0;
-    let recent = false;
+    let recent: RecentCols | null = null;
+    const last: RecentLast = { outlet: "", salesperson: "" };
     for (let r = headerRow + 1; r <= ws.rowCount; r++) {
       const row = ws.getRow(r);
       // "salesman | location | doc.no/date | remark | qty" starts the recent block.
-      if (/^SALESM/i.test(text(cellValue(row.getCell(4)))) && /^LOCATION$/i.test(text(cellValue(row.getCell(5))))) {
-        recent = true;
+      const header = findRecentHeader(ws, r);
+      if (header) {
+        recent = header;
+        last.outlet = last.salesperson = "";
         continue;
       }
       if (recent) {
-        const rec = parseRecentRow(ws, r, ws.name, warn);
+        const rec = parseRecentRow(ws, r, ws.name, recent, last, warn);
         if (rec) { lines.push(rec.line); outlets.push(rec.outlet); sheetLines++; sheetOutlets++; }
         continue;
       }
@@ -426,7 +464,18 @@ export function parseConsignment(wb: Workbook): ParsedConsignment {
   // The recent block re-lists CSGs that are already in the table (with the
   // quantity as first requested), so a table entry always wins.
   const tableCsg = new Set(lines.filter(l => l.origin === "table" && l.csgNo).map(l => `${outletKey(l.outlet)}|${l.csgNo}`));
-  const afterRecent = lines.filter(l => l.origin === "table" || !l.csgNo || !tableCsg.has(`${outletKey(l.outlet)}|${l.csgNo}`));
+  // A recent entry can also carry a different CSG number than the table gives the
+  // same stock (a typo on one side). Same outlet, product family, date and
+  // quantity is the same stock, so it is counted once.
+  const tableStock = new Map(lines.filter(l => l.origin === "table" && l.csgDate).map(l => [`${outletKey(l.outlet)}|${l.family}|${l.csgDate}|${l.qty}`, l.csgNo]));
+  const afterRecent = lines.filter(l => {
+    if (l.origin === "table" || !l.csgNo) return true;
+    if (tableCsg.has(`${outletKey(l.outlet)}|${l.csgNo}`)) return false;
+    const same = l.csgDate ? tableStock.get(`${outletKey(l.outlet)}|${l.family}|${l.csgDate}|${l.qty}`) : undefined;
+    if (same === undefined) return true;
+    warn(`${l.sheet} row ${l.row}: ${l.outlet} is listed as ${l.csgNo} in the recent list but as ${same ?? "no CSG no"} in the table, for the same stock, so it was counted once.`);
+    return false;
+  });
 
   // The same CSG can be typed twice for an outlet (a repeated outlet row). Keep one.
   const seen = new Set<string>();
