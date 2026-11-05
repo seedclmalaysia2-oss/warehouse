@@ -7,13 +7,13 @@ import path from "node:path";
 import { PDFDocument, StandardFonts, rgb, type PDFEmbeddedPage, type PDFFont, type PDFPage } from "pdf-lib";
 import { fmtDate, fmtInt, type CsgGroup } from "./analyze";
 
-export type ChecklistRow = { date: string; csgNo: string; product: string; consigned: number; balance: number };
+export type ChecklistRow = { date: string; csgNo: string; product: string; consigned: number };
 export type ChecklistData = { storeName: string; state: string; documentDate: string; rows: ChecklistRow[] };
 
 /**
- * One row per product per CSG. Balance is what the workbook holds now. The
- * quantity first consigned is the uploaded document's total where that total
- * belongs to a single row; otherwise only the workbook's figure is known.
+ * One row per product per CSG. The quantity consigned is the uploaded document's
+ * total where that total belongs to a single row; otherwise only the workbook's
+ * figure is known. Balance Quantity has no value here: the customer writes it in.
  */
 export function checklistRows(csgs: CsgGroup[], docTotals: Map<string, number>): ChecklistRow[] {
   const rowsPerDoc = new Map<string, number>();
@@ -23,7 +23,6 @@ export function checklistRows(csgs: CsgGroup[], docTotals: Map<string, number>):
     csgNo: c.csgNo ?? "",
     product: p.product,
     consigned: (c.docKey && rowsPerDoc.get(c.docKey) === 1 ? docTotals.get(c.docKey) : undefined) ?? p.qty,
-    balance: p.qty,
   })));
 }
 
@@ -151,7 +150,7 @@ export async function buildChecklistPdf(data: ChecklistData): Promise<Uint8Array
       continuation();
       y = tableHead(102);
     }
-    const values = r ? [[clean(r.date)], [clean(r.csgNo)], product, [fmtInt(r.consigned)], [fmtInt(r.balance)], []] : COLUMNS.map(() => []);
+    const values = r ? [[clean(r.date)], [clean(r.csgNo)], product, [fmtInt(r.consigned)], [], []] : COLUMNS.map(() => []);
     let x = LEFT;
     COLUMNS.forEach((w, i) => {
       box(x, y, w, h);
