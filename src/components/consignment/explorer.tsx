@@ -77,13 +77,11 @@ export function Explorer({ lines, outlets, today, warnings, ignoredSheets, docNo
         />
       </section>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_21rem]">
-        <ShelfLife
-          groups={groups} by={by} onBy={setBy} bands={chartBands}
-          selected={filters[by]} onPick={label => setFilter(by, label)}
-        />
-        <Attention lines={filtered} filters={filters} />
-      </div>
+      <ShelfLife
+        groups={groups} by={by} onBy={setBy} bands={chartBands}
+        selected={filters[by]} onPick={label => setFilter(by, label)}
+      />
+      <Attention lines={filtered} filters={filters} />
 
       {(warnings.length > 0 || ignoredSheets.length > 0) && (
         <details className="rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink-2">
