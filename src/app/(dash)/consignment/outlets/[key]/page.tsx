@@ -1,10 +1,11 @@
 import Link from "next/link";
 import {
-  NO_FILTERS, OUTLETS_PATH, ageText, buildOutletRows, csgFiles, docKey, fmtInt, groupCsgs, outletKey, todayISO, withAge,
+  OUTLETS_PATH, ageText, csgFiles, docKey, findOutlet, fmtInt, groupCsgs, outletKey, todayISO,
 } from "@/lib/consignment/analyze";
 import { loadSnapshot, type Snapshot } from "@/lib/consignment/store";
 import { loadDocMeta } from "@/lib/consignment/doc-store";
 import { PageHeader } from "@/components/page-header";
+import { ChecklistPills } from "@/components/consignment/checklist-pills";
 import { OutletFiles, type DocMeta } from "@/components/consignment/outlet-files";
 import { AgeLegend, AgeMix } from "@/components/consignment/outlet-table";
 
@@ -27,13 +28,7 @@ export default async function OutletPage({ params, searchParams }: {
     snap = null;
   }
   const today = todayISO();
-  const row = snap
-    ? buildOutletRows(
-        snap.lines.filter(l => outletKey(l.outlet) === key).map(l => withAge(l, today)),
-        snap.outlets.filter(o => outletKey(o.outlet) === key),
-        NO_FILTERS,
-      )[0]
-    : undefined;
+  const row = snap ? findOutlet(snap.lines, snap.outlets, key, today) : undefined;
 
   const crumbs = (name: string) => (
     <nav aria-label="Breadcrumb" className="mb-2 text-sm text-ink-2">
@@ -67,7 +62,9 @@ export default async function OutletPage({ params, searchParams }: {
   return (
     <>
       {crumbs(row.name)}
-      <PageHeader title={row.name} description={[place, owners && `Salesman: ${owners}`].filter(Boolean).join(". ") || "ECP outlet"} />
+      <PageHeader title={row.name} description={[place, owners && `Salesman: ${owners}`].filter(Boolean).join(". ") || "ECP outlet"}>
+        <ChecklistPills outletKey={row.key} outletName={row.name} />
+      </PageHeader>
 
       <div className="flex flex-col gap-6">
         <section aria-label="This outlet" className="overflow-hidden rounded-xl border border-line bg-surface">
