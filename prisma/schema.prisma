@@ -227,3 +227,46 @@ model ConsignmentDocLine {
   @@map("consignment_doc_line")
   @@schema("warehouse")
 }
+
+// One ERP CSR document (consignment return / billing). The number carries the
+// CSG number it comes off (CSR03935(1) is the first return against CSG03935).
+model ConsignmentReturn {
+  id         BigInt                  @id @default(autoincrement())
+  kind       String                  @default("CSR") // "CSR"; "CSA" is reserved for adjustments
+  code       String                  @unique // CSR03935(1)
+  csgKey     String                  @map("csg_key") // CSG03935
+  docDate    DateTime?               @map("doc_date") @db.Date
+  fromOutlet String                  @default("") @map("from_outlet")
+  toCounter  String                  @default("") @map("to_counter")
+  createdBy  String                  @default("") @map("created_by")
+  remark     String                  @default("")
+  lineTotal  Int                     @map("line_total")
+  fileName   String                  @default("") @map("file_name")
+  uploadedAt DateTime                @default(now()) @map("uploaded_at")
+  uploadedBy String?                 @map("uploaded_by")
+  lines      ConsignmentReturnLine[]
+
+  @@index([csgKey])
+  @@map("consignment_return")
+  @@schema("warehouse")
+}
+
+// One box on a CSR: the same shape as a CSG line, so it can be taken off it.
+model ConsignmentReturnLine {
+  id          BigInt            @id @default(autoincrement())
+  returnId    BigInt            @map("return_id")
+  itemNo      Int               @map("item_no")
+  stockId     String            @map("stock_id")
+  description String
+  power       String?
+  extra       String?
+  expire      String? // YYYYMM, as printed
+  mdaNo       String?           @map("mda_no")
+  qty         Int
+  uom         String            @default("BOX")
+  ret         ConsignmentReturn @relation(fields: [returnId], references: [id], onDelete: Cascade)
+
+  @@index([returnId])
+  @@map("consignment_return_line")
+  @@schema("warehouse")
+}

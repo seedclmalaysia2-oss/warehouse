@@ -191,6 +191,9 @@ function CsgRow({ c, doc, note, isOpen, onToggle, onFile }: {
 
         <div className="min-w-0">
           <p className="font-mono text-[0.8125rem] font-semibold text-ink">{c.csgNo ?? "No CSG number"}</p>
+          {c.latestCode && (
+            <p className="mt-0.5 font-mono text-xs text-brand" title="The latest CSR uploaded against this CSG">{c.latestCode}</p>
+          )}
           <p className="mt-0.5 flex items-center gap-1.5 text-sm tabular-nums text-ink-2">
             <span aria-hidden title={BAND_LABEL[c.band]} className={`h-2.5 w-2.5 flex-none rounded-sm ${BAND_BG[c.band]}`} />
             {c.csgDate ? `${fmtDate(c.csgDate)}, ${ageText(c.days)}` : "No date"}

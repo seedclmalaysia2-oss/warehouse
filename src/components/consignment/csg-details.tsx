@@ -41,6 +41,9 @@ type Head = {
   printedTotal: number | null;
   lineTotal: number;
   remark: string;
+  given?: number;
+  returns?: { code: string; docDate: string | null; boxes: number }[];
+  unmatched?: number;
 };
 type Loaded = { doc: Head; matrix: Matrix };
 
@@ -77,6 +80,9 @@ export function CsgDetails({ csgNo, workbookQty }: { csgNo: string; workbookQty:
   const { doc, matrix } = data;
   const mismatch = workbookQty !== matrix.total;
   const today = todayISO();
+  const returns = doc.returns ?? [];
+  const given = doc.given ?? matrix.total;
+  const returnedBoxes = returns.reduce((n, r) => n + r.boxes, 0);
 
   return (
     <div className="px-3 py-3">
@@ -87,6 +93,29 @@ export function CsgDetails({ csgNo, workbookQty }: { csgNo: string; workbookQty:
         {doc.salesperson ? `, salesperson ${doc.salesperson}` : ""}
         {doc.createdBy ? `, created by ${doc.createdBy}` : ""}
       </p>
+
+      {returns.length > 0 && (
+        <div className="mt-2 rounded-lg bg-quiet px-3 py-2 text-sm text-ink-2">
+          <p>
+            <span className="font-semibold text-ink">{fmtInt(given)}</span> boxes given,{" "}
+            <span className="font-semibold text-ink">{fmtInt(returnedBoxes)}</span> returned,{" "}
+            <span className="font-semibold text-ink">{fmtInt(matrix.total)}</span> left. The grid below shows what is left.
+          </p>
+          <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5">
+            {returns.map(r => (
+              <li key={r.code} className="tabular-nums">
+                <span className="font-mono font-semibold text-brand">{r.code}</span>
+                {r.docDate ? `, ${fmtDate(r.docDate)}` : ""}, {fmtInt(r.boxes)} boxes
+              </li>
+            ))}
+          </ul>
+          {(doc.unmatched ?? 0) > 0 && (
+            <p className="mt-1 text-warn">
+              {fmtInt(doc.unmatched ?? 0)} returned boxes are not on this CSG, or are more than it holds, so they took nothing off.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="mt-2 overflow-x-auto rounded-lg border border-line">
         <table className="w-full border-collapse text-sm">
@@ -145,7 +174,7 @@ export function CsgDetails({ csgNo, workbookQty }: { csgNo: string; workbookQty:
 
       <p className="mt-2 text-sm text-muted">
         {fmtInt(matrix.total)} boxes on {fmtInt(matrix.lineCount)} lines.
-        {doc.printedTotal !== null && doc.printedTotal !== matrix.total ? ` The document prints a total of ${fmtInt(doc.printedTotal)}.` : ""}
+        {doc.printedTotal !== null && doc.printedTotal !== given ? ` The document prints a total of ${fmtInt(doc.printedTotal)}.` : ""}
         {doc.remark ? ` Remark: ${doc.remark}` : ""}
       </p>
       {mismatch && (

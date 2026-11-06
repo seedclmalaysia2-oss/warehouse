@@ -6,6 +6,7 @@ import type { UploadEntry, UploadKind } from "@/lib/uploads";
 const KIND_LABEL: Record<UploadKind, string> = {
   workbook: "Consignment workbook",
   csg: "CSG document",
+  csr: "CSR document",
   issue: "Stock Issue listing",
   receive: "Stock Receive listing",
 };
@@ -13,6 +14,7 @@ const FILTERS: { key: UploadKind | "all"; label: string }[] = [
   { key: "all", label: "All" },
   { key: "workbook", label: "Workbook" },
   { key: "csg", label: "CSG documents" },
+  { key: "csr", label: "CSR documents" },
   { key: "issue", label: "Issue" },
   { key: "receive", label: "Receive" },
 ];
@@ -48,12 +50,16 @@ export function UploadHistory({ entries }: { entries: UploadEntry[] }) {
   const visible = rows.slice(0, shown);
 
   async function remove(e: UploadEntry) {
-    if (!e.csgNo) return;
-    if (!window.confirm(`Remove the details for ${e.csgNo}? The Details button on that CSG will go back to "Not uploaded". The workbook figures stay as they are.`)) return;
+    const csr = e.csrNo;
+    if (!e.csgNo && !csr) return;
+    const ask = csr
+      ? `Remove ${csr}? Its boxes go back onto the CSG they came off, and the balance goes back to what the workbook says.`
+      : `Remove the details for ${e.csgNo}? The Details button on that CSG will go back to "Not uploaded". The workbook figures stay as they are.`;
+    if (!window.confirm(ask)) return;
     setRemoving(e.id);
     setError(null);
     try {
-      const res = await fetch(`/api/consignment/docs/${encodeURIComponent(e.csgNo)}`, { method: "DELETE" });
+      const res = await fetch(csr ? `/api/consignment/returns/${encodeURIComponent(csr)}` : `/api/consignment/docs/${encodeURIComponent(e.csgNo!)}`, { method: "DELETE" });
       if (!res.ok) setError((await res.json().catch(() => ({}))).error ?? "Could not remove it.");
       else router.refresh();
     } catch {
@@ -118,7 +124,7 @@ export function UploadHistory({ entries }: { entries: UploadEntry[] }) {
                       <td className={`${td} min-w-[15rem]`}>{e.detail}</td>
                       <td className={`${td} whitespace-nowrap`}>{e.by ?? "None"}</td>
                       <td className="px-3 py-2 text-right">
-                        {e.csgNo && (
+                        {(e.csgNo || e.csrNo) && (
                           <button
                             type="button" disabled={removing === e.id} onClick={() => remove(e)}
                             className="whitespace-nowrap rounded-md px-2 py-0.5 text-sm font-semibold text-danger hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-50"
