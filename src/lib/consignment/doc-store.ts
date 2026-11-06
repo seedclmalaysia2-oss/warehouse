@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/db";
 import { docKey } from "./analyze";
 import type { ParsedDoc } from "./doc-parse";
+import { takeOff } from "./return-apply";
+import { loadReturnsFor } from "./return-store";
 
 const day = (s: string | null) => (s ? new Date(`${s}T00:00:00Z`) : null);
 
@@ -94,16 +96,28 @@ export type DocView = {
   printedTotal: number | null;
   lineTotal: number;
   remark: string;
+  /** Boxes on the CSG as given, before any CSR. */
+  given: number;
+  /** CSRs taken off it, oldest first. */
+  returns: { code: string; docDate: string | null; boxes: number }[];
+  /** Returned boxes that could not be found on the CSG. */
+  unmatched: number;
+  /** What the CSG still holds: its lines with the returns taken off. */
   lines: { itemNo: number; stockId: string; description: string; power: string | null; extra: string | null; expire: string | null; qty: number }[];
 };
 
 export async function loadDoc(csgNo: string): Promise<DocView | null> {
   const d = await prisma.consignmentDoc.findUnique({ where: { csgNo }, include: { lines: { orderBy: { itemNo: "asc" } } } });
   if (!d) return null;
+  const returns = await loadReturnsFor(docKey(d.csgNo));
+  const t = takeOff(d.lines, returns.flatMap(r => r.lines));
   return {
     csgNo: d.csgNo, docDate: d.docDate ? d.docDate.toISOString().slice(0, 10) : null, toCounter: d.toCounter,
     salesperson: d.salesperson, createdBy: d.createdBy, printedTotal: d.printedTotal, lineTotal: d.lineTotal, remark: d.remark,
-    lines: d.lines.map(l => ({
+    given: d.lines.reduce((s, l) => s + l.qty, 0),
+    returns: returns.map(r => ({ code: r.code, docDate: r.docDate, boxes: r.lineTotal })),
+    unmatched: t.unmatched.reduce((s, u) => s + u.short, 0),
+    lines: t.remaining.map(l => ({
       itemNo: l.itemNo, stockId: l.stockId, description: l.description, power: l.power, extra: l.extra, expire: l.expire, qty: l.qty,
     })),
   };

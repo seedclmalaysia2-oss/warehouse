@@ -92,6 +92,7 @@ export function parseCsgDocs(sheets: SheetRows[]): ParsedDocs {
 
       // ---- header labels (value is the next cell that is not ":" or another label) ----
       let sawLabel = false;
+      const found: { label: string; val: unknown }[] = [];
       for (let i = 0; i < cells.length; i++) {
         const label = norm(text(cells[i].value));
         if (!LABELS.has(label)) continue;
@@ -103,7 +104,12 @@ export function parseCsgDocs(sheets: SheetRows[]): ParsedDocs {
           val = cells[j].value;
           break;
         }
-        if (val === null) continue;
+        if (val !== null) found.push({ label, val });
+      }
+      // FROM COUNTER shares a row with CONSIGN NO and comes first, so the document
+      // is started before the other labels on the row are filed to it.
+      found.sort((a, b) => Number(b.label === "CONSIGN NO") - Number(a.label === "CONSIGN NO"));
+      for (const { label, val } of found) {
         if (label === "CONSIGN NO") {
           closeRemark();
           const no = text(val).toUpperCase().replace(/\s+/g, "");

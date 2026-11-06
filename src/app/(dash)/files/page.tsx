@@ -2,6 +2,7 @@ import { loadUploads } from "@/lib/uploads";
 import { PageHeader } from "@/components/page-header";
 import { UploadBox as ConsignmentUpload } from "@/components/consignment/upload-box";
 import { DocUploadBox } from "@/components/consignment/doc-upload-box";
+import { CsrUpload } from "@/components/consignment/csr-upload";
 import { UploadBox as ExchangeUpload } from "@/components/exchange/upload-box";
 import { UploadHistory } from "@/components/files/history";
 
@@ -21,11 +22,12 @@ export default async function FilesPage() {
       <section aria-labelledby="up-consignment" className="mb-8">
         <h2 id="up-consignment" className="mb-1 font-display text-lg font-semibold text-ink">ECP Consignment</h2>
         <p className="mb-3 max-w-[70ch] text-sm text-ink-2">
-          The workbook gives the stock at each outlet. The CSG documents add the colour and power behind each CSG&apos;s Details button.
+          The workbook gives the stock at each outlet. The CSG documents add the colour and power behind each CSG&apos;s Details button. CSRs then take returned boxes off their CSG.
         </p>
         <div className="grid gap-4 lg:grid-cols-2">
           <ConsignmentUpload />
           <DocUploadBox />
+          <CsrUpload />
         </div>
       </section>
 

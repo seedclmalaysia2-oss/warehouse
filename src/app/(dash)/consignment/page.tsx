@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { Explorer } from "@/components/consignment/explorer";
 import { WorkbookDialog } from "@/components/consignment/workbook-dialog";
 import { CsgFileDialog } from "@/components/consignment/csg-file-dialog";
+import { CsrFileDialog } from "@/components/consignment/csr-file-dialog";
 
 const page = PAGES.find(p => p.href === "/consignment")!;
 
@@ -28,6 +29,7 @@ export default async function ConsignmentPage() {
       <PageHeader title={page.title} description={page.description}>
         {snap && <a href="/consignment/outlets" className={primary}>View outlets</a>}
         {snap && <CsgFileDialog />}
+        {snap && <CsrFileDialog />}
         {snap && <WorkbookDialog />}
       </PageHeader>
 
