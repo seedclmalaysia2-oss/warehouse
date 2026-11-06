@@ -1,7 +1,36 @@
 "use client";
 import { useEffect, useState } from "react";
-import { fmtDate, fmtInt } from "@/lib/consignment/analyze";
+import { expiryState, fmtDate, fmtExpiryMY, fmtInt, todayISO, type ExpiryState } from "@/lib/consignment/analyze";
 import type { Matrix } from "@/lib/consignment/doc-matrix";
+
+// Expiry colours: red already expired, orange within 12 months, green beyond.
+const EXPIRY: Record<ExpiryState, { cls: string; sample: string; legend: string; say: string }> = {
+  expired: { cls: "text-danger", sample: "MMYYYY", legend: "expired", say: "Expired" },
+  soon: { cls: "text-warn", sample: "MMYYYY", legend: "within 12 months", say: "Expires within 12 months" },
+  ok: { cls: "text-ok", sample: "MMYYYY", legend: "more than 12 months", say: "More than 12 months left" },
+};
+const MAX_SHOWN = 2;
+
+/** The expiry dates of the boxes in one cell, smallest type that stays readable. */
+function Expiries({ list, today }: { list: string[]; today: string }) {
+  if (!list.length) return null;
+  return (
+    <span className="mt-0.5 flex flex-col items-end text-[10px] font-semibold leading-[1.15] tabular-nums">
+      {list.slice(0, MAX_SHOWN).map(e => {
+        const s = expiryState(e, today);
+        return (
+          <span key={e} className={s ? EXPIRY[s].cls : "text-muted"} title={s ? `${fmtExpiryMY(e)}: ${EXPIRY[s].say}` : e}>
+            {fmtExpiryMY(e)}
+            {s && <span className="sr-only"> {EXPIRY[s].say}</span>}
+          </span>
+        );
+      })}
+      {list.length > MAX_SHOWN && (
+        <span className="font-normal text-muted" title={`Also: ${list.slice(MAX_SHOWN).map(fmtExpiryMY).join(", ")}`}>+{list.length - MAX_SHOWN}</span>
+      )}
+    </span>
+  );
+}
 
 type Head = {
   csgNo: string;
@@ -47,6 +76,7 @@ export function CsgDetails({ csgNo, workbookQty }: { csgNo: string; workbookQty:
 
   const { doc, matrix } = data;
   const mismatch = workbookQty !== matrix.total;
+  const today = todayISO();
 
   return (
     <div className="px-3 py-3">
@@ -85,6 +115,7 @@ export function CsgDetails({ csgNo, workbookQty }: { csgNo: string; workbookQty:
                   <td key={i} className={`px-2 py-1.5 text-right tabular-nums ${n ? "text-ink" : "text-muted"}`}>
                     {n ? fmtInt(n) : <span aria-hidden>·</span>}
                     {!n && <span className="sr-only">0</span>}
+                    {n > 0 && <Expiries list={r.expiries?.[i] ?? []} today={today} />}
                   </td>
                 ))}
                 <td className="border-l border-line px-3 py-1.5 text-right font-semibold tabular-nums text-ink">{fmtInt(r.total)}</td>
@@ -102,6 +133,15 @@ export function CsgDetails({ csgNo, workbookQty }: { csgNo: string; workbookQty:
           </tfoot>
         </table>
       </div>
+
+      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+        <span>Expiry under each quantity, month then year:</span>
+        {(Object.keys(EXPIRY) as ExpiryState[]).map(k => (
+          <span key={k} className="inline-flex items-center gap-1">
+            <span className={`font-semibold tabular-nums ${EXPIRY[k].cls}`}>{EXPIRY[k].sample}</span> {EXPIRY[k].legend}
+          </span>
+        ))}
+      </p>
 
       <p className="mt-2 text-sm text-muted">
         {fmtInt(matrix.total)} boxes on {fmtInt(matrix.lineCount)} lines.

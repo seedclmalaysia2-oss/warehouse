@@ -208,6 +208,26 @@ export function fmtDate(iso: string | null): string {
   return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 }
 
+export type ExpiryState = "expired" | "soon" | "ok";
+
+/**
+ * Where a printed expiry (YYYYMM) stands today. A box is good until the end of
+ * its month, so it is expired only once that month has passed; "soon" is the
+ * current month and the 12 after it. Anything that is not YYYYMM gives null.
+ */
+export function expiryState(yyyymm: string, today: string): ExpiryState | null {
+  const m = yyyymm.match(/^(\d{4})(0[1-9]|1[0-2])$/);
+  if (!m) return null;
+  const ahead = Number(m[1]) * 12 + Number(m[2]) - (Number(today.slice(0, 4)) * 12 + Number(today.slice(5, 7)));
+  return ahead < 0 ? "expired" : ahead <= 12 ? "soon" : "ok";
+}
+
+/** "202609" -> "092026" (month then year), as people read it off the box. */
+export const fmtExpiryMY = (yyyymm: string) => {
+  const m = yyyymm.match(/^(\d{4})(\d{2})$/);
+  return m ? `${m[2]}${m[1]}` : yyyymm;
+};
+
 /** Today in Malaysia (UTC+8) as YYYY-MM-DD. */
 export function todayISO(now = new Date()): string {
   return new Date(now.getTime() + 8 * 3_600_000).toISOString().slice(0, 10);
