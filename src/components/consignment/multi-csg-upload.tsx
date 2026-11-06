@@ -19,7 +19,7 @@ const n = (x: number, one: string, many = `${one}s`) => `${x.toLocaleString("en-
 // Files from the ERP's CSG "page" export hold many CSG documents each. Every
 // document is filed under its CSG number, so it shows up in Details on the
 // outlet the workbook lists that CSG under.
-export function MultiCsgUpload() {
+export function MultiCsgUpload({ onClose }: { onClose?: () => void }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
@@ -61,12 +61,23 @@ export function MultiCsgUpload() {
 
   return (
     <section className="rounded-xl border border-line bg-surface p-5" aria-labelledby="multi-csg-h">
-      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
+      <div className={onClose ? "flex flex-col gap-3" : "flex flex-wrap items-start justify-between gap-x-6 gap-y-2"}>
         <div>
-          <h2 id="multi-csg-h" className="font-display text-lg font-semibold text-ink">Upload CSG files</h2>
+          <div className="flex items-center justify-between gap-4">
+            <h2 id="multi-csg-h" className="font-display text-lg font-semibold text-ink">Upload a file of many CSGs</h2>
+            {onClose && (
+              <button
+                type="button" onClick={onClose}
+                className="rounded px-2 py-1 text-sm font-semibold text-ink-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
+              >
+                Close
+              </button>
+            )}
+          </div>
           <p className="mt-0.5 max-w-[62ch] text-sm text-ink-2">
-            Files with many CSGs in them. Each CSG is filed to its own outlet by its number and shows under Details there.
-            A CSG is kept once: one that is already stored is not added again.
+            One Excel file can hold many CSGs, one after another (the ERP&apos;s CSG page export). Each CSG in it is filed to
+            its own outlet by its number and shows under Details there. A CSG is kept once: one that is already stored is
+            not added again.
           </p>
         </div>
         <label
@@ -75,8 +86,8 @@ export function MultiCsgUpload() {
           onDrop={e => { e.preventDefault(); setOver(false); if (!busy) sendAll([...e.dataTransfer.files]); }}
           className={`flex min-w-[15rem] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border-2 border-dashed px-5 py-3 text-sm transition-colors focus-within:border-brand hover:border-brand ${over ? "border-brand bg-quiet" : "border-line-strong"} ${busy ? "opacity-60" : ""}`}
         >
-          <span className="font-semibold text-ink">{busy ? "Filing the CSGs…" : "Drop .xlsx files or click to choose"}</span>
-          <span className="text-xs text-ink-2">Several at once, 4 MB at most each</span>
+          <span className="font-semibold text-ink">{busy ? "Filing the CSGs…" : "Drop the .xlsx file or click to choose"}</span>
+          <span className="text-xs text-ink-2">Any number of CSGs per file · 4 MB max · more than one file is fine</span>
           <input
             type="file" accept=".xlsx" multiple className="sr-only" disabled={busy}
             onChange={e => { const f = [...(e.target.files ?? [])]; e.target.value = ""; sendAll(f); }}

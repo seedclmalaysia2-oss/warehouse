@@ -3,7 +3,6 @@ import { loadSnapshot, type Snapshot } from "@/lib/consignment/store";
 import { loadDocNumbers } from "@/lib/consignment/doc-store";
 import { PageHeader } from "@/components/page-header";
 import { OutletList } from "@/components/consignment/outlet-list";
-import { MultiCsgUpload } from "@/components/consignment/multi-csg-upload";
 import { WorkbookDialog } from "@/components/consignment/workbook-dialog";
 
 // Never cache: the CSG file counts must show what was just uploaded.
@@ -32,10 +31,7 @@ export default async function OutletsPage({ searchParams }: { searchParams: Prom
         </a>
       </PageHeader>
       {snap ? (
-        <div className="flex flex-col gap-6">
-          <MultiCsgUpload />
-          <OutletList lines={snap.lines} outlets={snap.outlets} today={todayISO()} docNos={docNos} initial={initial.toString()} />
-        </div>
+        <OutletList lines={snap.lines} outlets={snap.outlets} today={todayISO()} docNos={docNos} initial={initial.toString()} />
       ) : (
         <div className="needs">
           <strong>No consignment data yet.</strong>
