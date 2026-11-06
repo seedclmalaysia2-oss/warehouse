@@ -1,28 +1,88 @@
 // CSG document data access. Pages and routes call guardDept()/the (dash)
 // layout first — Prisma bypasses row level security.
 import { prisma } from "@/lib/db";
+import { docKey } from "./analyze";
 import type { ParsedDoc } from "./doc-parse";
 
 const day = (s: string | null) => (s ? new Date(`${s}T00:00:00Z`) : null);
 
-/** Save parsed documents. A CSG that is already stored is replaced, so re-uploading is safe. */
-export async function saveDocs(docs: ParsedDoc[], fileName: string, by: string) {
-  let replaced = 0;
-  await prisma.$transaction(async tx => {
-    for (const d of docs) {
-      const gone = await tx.consignmentDoc.deleteMany({ where: { csgNo: d.csgNo } });
-      replaced += gone.count;
-      await tx.consignmentDoc.create({
-        data: {
-          csgNo: d.csgNo, docDate: day(d.docDate), toCounter: d.toCounter, fromCounter: d.fromCounter,
-          salesperson: d.salesperson, createdBy: d.createdBy, printedTotal: d.printedTotal,
-          lineTotal: d.lines.reduce((s, l) => s + l.qty, 0), remark: d.remark, fileName, uploadedBy: by,
-          lines: { create: d.lines.map(l => ({ ...l })) },
-        },
-      });
+export type SaveStatus = "new" | "updated" | "unchanged";
+export type SaveResult = { csgNo: string; status: SaveStatus; /** The file an updated CSG was read from before. */ was?: string };
+
+// What a document says, so a copy can be told from a changed one.
+const lineSig = (l: { itemNo: number; stockId: string; description: string; power: string | null; extra: string | null; expire: string | null; mdaNo: string | null; qty: number; uom: string }) =>
+  [l.itemNo, l.stockId, l.description, l.power ?? "", l.extra ?? "", l.expire ?? "", l.mdaNo ?? "", l.qty, l.uom].join("|");
+const docSig = (d: { docDate: string | null; toCounter: string; remark: string; lines: Parameters<typeof lineSig>[0][] }) =>
+  [d.docDate ?? "", d.toCounter, d.remark, ...d.lines.map(lineSig).sort()].join("\n");
+
+/**
+ * Save parsed documents, one stored copy per CSG number. A CSG that is already
+ * stored (matched on its normalised number, so "CSG 1234" and "CSG1234" are one)
+ * is replaced, so re-uploading is safe. With `keepSame`, a copy that says exactly
+ * what the stored one does is left alone.
+ */
+export async function saveDocs(docs: ParsedDoc[], fileName: string, by: string, opts: { keepSame?: boolean } = {}) {
+  const results: SaveResult[] = [];
+  await prisma.$transaction(tx => writeDocs(tx, docs, fileName, by, opts, results), { timeout: 60_000 });
+  return summarise(results);
+}
+
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+/** The body of saveDocs, on a transaction the caller owns (so a test can roll it back). */
+export async function writeDocs(tx: Tx, docs: ParsedDoc[], fileName: string, by: string, opts: { keepSame?: boolean }, results: SaveResult[]) {
+  // One copy per CSG within the batch too: the last one given wins.
+  const unique = new Map<string, ParsedDoc>();
+  for (const d of docs) unique.set(docKey(d.csgNo), d);
+  const batch = [...unique.entries()];
+  const inBatch = new Set(batch.map(([k]) => k));
+  const stored = (await tx.consignmentDoc.findMany({
+    select: { id: true, csgNo: true, fileName: true, docDate: true, toCounter: true, remark: true },
+  })).filter(s => inBatch.has(docKey(s.csgNo)));
+  const storedLines = opts.keepSame && stored.length
+    ? await tx.consignmentDocLine.findMany({ where: { docId: { in: stored.map(s => s.id) } } })
+    : [];
+  const have = new Map<string, ((typeof stored)[number] & { lines: typeof storedLines })[]>();
+  for (const s of stored) {
+    const k = docKey(s.csgNo);
+    have.set(k, [...(have.get(k) ?? []), { ...s, lines: storedLines.filter(l => l.docId === s.id) }]);
+  }
+
+  const fresh: [string, ParsedDoc][] = [];
+  const drop: bigint[] = [];
+  for (const [k, d] of batch) {
+    const old = have.get(k) ?? [];
+    if (opts.keepSame && old.length === 1 && old[0].csgNo === d.csgNo
+      && docSig({ ...old[0], docDate: old[0].docDate ? old[0].docDate.toISOString().slice(0, 10) : null }) === docSig(d)) {
+      results.push({ csgNo: d.csgNo, status: "unchanged" });
+      continue;
     }
-  }, { timeout: 30_000 });
-  return { saved: docs.length, replaced };
+    drop.push(...old.map(o => o.id));
+    results.push(old.length ? { csgNo: d.csgNo, status: "updated", was: old[0].fileName } : { csgNo: d.csgNo, status: "new" });
+    fresh.push([k, d]);
+  }
+
+  if (drop.length) await tx.consignmentDoc.deleteMany({ where: { id: { in: drop } } });
+  if (!fresh.length) return;
+  const made = await tx.consignmentDoc.createManyAndReturn({
+    data: fresh.map(([, d]) => ({
+      csgNo: d.csgNo, docDate: day(d.docDate), toCounter: d.toCounter, fromCounter: d.fromCounter,
+      salesperson: d.salesperson, createdBy: d.createdBy, printedTotal: d.printedTotal,
+      lineTotal: d.lines.reduce((s, l) => s + l.qty, 0), remark: d.remark, fileName, uploadedBy: by,
+    })),
+    select: { id: true, csgNo: true },
+  });
+  const idOf = new Map(made.map(m => [m.csgNo, m.id]));
+  const rows = fresh.flatMap(([, d]) => d.lines.map(l => ({ ...l, docId: idOf.get(d.csgNo)! })));
+  for (let i = 0; i < rows.length; i += 2000) await tx.consignmentDocLine.createMany({ data: rows.slice(i, i + 2000) });
+}
+
+export function summarise(results: SaveResult[]) {
+  return {
+    saved: results.filter(r => r.status !== "unchanged").length,
+    replaced: results.filter(r => r.status === "updated").length,
+    results,
+  };
 }
 
 export type DocView = {

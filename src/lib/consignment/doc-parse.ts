@@ -8,8 +8,7 @@
 // The document ends with a printed total, a "Remark :" block and a signature
 // area. Several documents (or pages) can sit in one file, so a document starts
 // wherever a new CONSIGN NO appears and its pages are merged.
-import type { Workbook } from "exceljs";
-import { cellValue, text } from "./parse";
+import { text } from "./parse";
 
 export type DocLine = {
   itemNo: number;
@@ -42,7 +41,10 @@ export class DocError extends Error {}
 const LABELS = new Set(["FROM COUNTER", "TO COUNTER", "CONSIGN NO", "DATE", "SALESPERSON", "CREATED BY", "ATTENTION", "ADDRESS", "PAGE"]);
 const norm = (s: string) => s.toUpperCase().replace(/\s+/g, " ").trim();
 
-type C = { col: number; value: unknown };
+export type C = { col: number; value: unknown };
+
+/** A sheet reduced to the non-empty cells of each row. */
+export type SheetRows = { name: string; rows: { r: number; cells: C[] }[] };
 
 const isInt = (v: unknown) => (typeof v === "number" && Number.isInteger(v)) || (typeof v === "string" && /^\d+$/.test(v.trim()));
 const num = (v: unknown) => (typeof v === "number" ? v : Number(String(v).trim()));
@@ -64,13 +66,15 @@ export function normPower(v: unknown): string {
   return n > 0 ? `+${n.toFixed(2)}` : n === 0 ? "0.00" : n.toFixed(2);
 }
 
-export function parseCsgDocs(wb: Workbook): ParsedDocs {
+export function parseCsgDocs(sheets: SheetRows[]): ParsedDocs {
   const byNo = new Map<string, ParsedDoc>();
   const order: ParsedDoc[] = [];
   const warnings: string[] = [];
   const warn = (m: string) => { if (warnings.length < 40) warnings.push(m); };
+  const seenLines = new Map<string, Set<string>>();
+  const repeated = new Map<string, number>();
 
-  for (const ws of wb.worksheets) {
+  for (const ws of sheets) {
     let cur: ParsedDoc | null = null;
     let pendingExpire: string | null = null;
     let pendingMda: string | null = null;
@@ -84,14 +88,7 @@ export function parseCsgDocs(wb: Workbook): ParsedDocs {
       inRemark = false;
     };
 
-    ws.eachRow({ includeEmpty: false }, (row, r) => {
-      const cells: C[] = [];
-      row.eachCell({ includeEmpty: false }, (cell, col) => {
-        const v = cellValue(cell);
-        if (v === null || v === undefined || (typeof v === "string" && !v.trim())) return;
-        cells.push({ col, value: typeof v === "string" ? v.trim() : v });
-      });
-      if (!cells.length) return;
+    ws.rows.forEach(({ r, cells }) => {
 
       // ---- header labels (value is the next cell that is not ":" or another label) ----
       let sawLabel = false;
@@ -153,7 +150,7 @@ export function parseCsgDocs(wb: Workbook): ParsedDocs {
           warn(`${cur.csgNo} item ${text(cells[0].value)}: no quantity, so it was left out.`);
           return;
         }
-        cur.lines.push({
+        const line: DocLine = {
           itemNo: num(cells[0].value),
           stockId: text(cells[1].value),
           description: text(cells[2].value),
@@ -163,8 +160,15 @@ export function parseCsgDocs(wb: Workbook): ParsedDocs {
           mdaNo: pendingMda,
           qty,
           uom,
-        });
+        };
         pendingExpire = pendingMda = null;
+        // Item numbers run on across a document's pages, so the same item twice
+        // with everything else identical is a page that was printed twice.
+        const sig = JSON.stringify(line);
+        const seen = seenLines.get(cur.csgNo) ?? seenLines.set(cur.csgNo, new Set()).get(cur.csgNo)!;
+        if (seen.has(sig)) { repeated.set(cur.csgNo, (repeated.get(cur.csgNo) ?? 0) + 1); return; }
+        seen.add(sig);
+        cur.lines.push(line);
         return;
       }
 
@@ -183,6 +187,8 @@ export function parseCsgDocs(wb: Workbook): ParsedDocs {
   const docs: ParsedDoc[] = [];
   for (const d of order) {
     if (!d.lines.length) { warn(`${d.csgNo}: no item lines were found, so it was left out.`); continue; }
+    const again = repeated.get(d.csgNo);
+    if (again) warn(`${d.csgNo}: ${again} repeated item ${again === 1 ? "line was" : "lines were"} counted once (a page printed twice).`);
     const sum = d.lines.reduce((s, l) => s + l.qty, 0);
     if (d.printedTotal !== null && d.printedTotal !== sum) {
       warn(`${d.csgNo}: the document prints a total of ${d.printedTotal} but its lines add up to ${sum}.`);

@@ -1,7 +1,7 @@
 // ECP Consignment data access. Pages and routes call guardDept()/the (dash)
 // layout first — Prisma bypasses row level security.
 import { prisma } from "@/lib/db";
-import type { Line, OutletRef, Tag } from "./analyze";
+import { docKey, type Line, type OutletRef, type Tag } from "./analyze";
 import type { ParsedConsignment } from "./parse";
 
 const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
@@ -58,7 +58,34 @@ export async function recentImports(take = 10): Promise<ImportInfo[]> {
   return rows.map(r => ({ ...r, id: Number(r.id) }));
 }
 
-export type Snapshot = { info: ImportInfo; lines: Line[]; outlets: OutletRef[] };
+/**
+ * Which outlet each CSG number is out at, according to the current workbook.
+ * Keyed by the normalised number. A number can sit at more than one outlet
+ * (the workbook lists it under each), so the value is a list.
+ */
+export async function loadCsgOutlets(): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>();
+  try {
+    const [info] = await recentImports(1);
+    if (!info) return out;
+    const rows = await prisma.consignmentLine.findMany({
+      where: { importId: BigInt(info.id), csgNo: { not: null } },
+      select: { outlet: true, csgNo: true },
+      distinct: ["outlet", "csgNo"],
+    });
+    for (const r of rows) {
+      const k = docKey(r.csgNo!);
+      const list = out.get(k) ?? [];
+      if (!list.includes(r.outlet)) list.push(r.outlet);
+      out.set(k, list);
+    }
+  } catch {
+    // Tables missing: every CSG will simply report as not in the workbook.
+  }
+  return out;
+}
+
+export type Snapshot ={ info: ImportInfo; lines: Line[]; outlets: OutletRef[] };
 
 /** The current snapshot, or null before the first upload. Throws if the tables don't exist (0004 not applied). */
 export async function loadSnapshot(): Promise<Snapshot | null> {

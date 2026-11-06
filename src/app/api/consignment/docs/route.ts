@@ -1,7 +1,7 @@
-import ExcelJS from "exceljs";
 import { getAccess, guardDept } from "@/lib/auth";
 import { docKey } from "@/lib/consignment/analyze";
 import { DocError, parseCsgDocs, type ParsedDocs } from "@/lib/consignment/doc-parse";
+import { readDocSheets } from "@/lib/consignment/doc-read";
 import { saveDocs } from "@/lib/consignment/doc-store";
 
 const MAX_BYTES = 4 * 1024 * 1024; // Vercel caps request bodies at 4.5 MB
@@ -19,9 +19,7 @@ export async function POST(req: Request) {
 
   let parsed: ParsedDocs;
   try {
-    const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(await file.arrayBuffer());
-    parsed = parseCsgDocs(wb);
+    parsed = parseCsgDocs(await readDocSheets(await file.arrayBuffer()));
   } catch (e) {
     const msg = e instanceof DocError ? e.message : "Could not read that file as an .xlsx document.";
     return Response.json({ error: msg }, { status: 422 });
