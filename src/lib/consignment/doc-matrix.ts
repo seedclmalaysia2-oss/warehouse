@@ -8,6 +8,8 @@ export type MatrixRow = {
   product: string;
   /** Quantity per power, aligned with Matrix.powers; 0 when none. */
   cells: number[];
+  /** The expiry dates (YYYYMM, earliest first) of the boxes in each cell; empty when none are printed. */
+  expiries: string[][];
   total: number;
   /** Earliest expiry on this colour, as "Jun 2027". */
   expiry: string | null;
@@ -48,23 +50,24 @@ export function buildMatrix(lines: DocView["lines"]): Matrix {
   });
   const col = new Map(powers.map((p, i) => [p, i]));
 
-  const byRow = new Map<string, { colour: string; product: string; cells: number[]; expiries: Set<string> }>();
+  const byRow = new Map<string, { colour: string; product: string; cells: number[]; cellExpiry: Set<string>[]; expiries: Set<string> }>();
   for (const l of lines) {
     const { product, colour } = splitDescription(l.description);
     const key = l.description;
     let r = byRow.get(key);
     if (!r) {
-      r = { colour: sameProduct ? colour || l.description : [product, colour].filter(Boolean).join(" - "), product, cells: powers.map(() => 0), expiries: new Set() };
+      r = { colour: sameProduct ? colour || l.description : [product, colour].filter(Boolean).join(" - "), product, cells: powers.map(() => 0), cellExpiry: powers.map(() => new Set<string>()), expiries: new Set() };
       byRow.set(key, r);
     }
-    r.cells[col.get(powerKey(l))!] += l.qty;
-    if (l.expire) r.expiries.add(l.expire);
+    const c = col.get(powerKey(l))!;
+    r.cells[c] += l.qty;
+    if (l.expire) { r.expiries.add(l.expire); r.cellExpiry[c].add(l.expire); }
   }
 
   const rows: MatrixRow[] = [...byRow.values()].map(r => {
     const sorted = [...r.expiries].sort();
     return {
-      colour: r.colour, product: r.product, cells: r.cells, total: r.cells.reduce((s, n) => s + n, 0),
+      colour: r.colour, product: r.product, cells: r.cells, expiries: r.cellExpiry.map(s => [...s].sort()), total: r.cells.reduce((s, n) => s + n, 0),
       expiry: sorted.length ? fmtExpiry(sorted[0]) : null, mixedExpiry: sorted.length > 1,
     };
   });
