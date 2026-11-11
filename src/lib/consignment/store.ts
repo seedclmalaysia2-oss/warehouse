@@ -2,7 +2,8 @@
 // layout first — Prisma bypasses row level security.
 import { prisma } from "@/lib/db";
 import { docKey, type Line, type OutletRef, type Tag } from "./analyze";
-import type { ParsedConsignment } from "./parse";
+import type { ParsedDoc } from "./doc-parse";
+import { normalizeProduct, type ParsedConsignment } from "./parse";
 import { loadReturnSummary } from "./return-store";
 
 const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
@@ -84,6 +85,51 @@ export async function loadCsgOutlets(): Promise<Map<string, string[]>> {
     // Tables missing: every CSG will simply report as not in the workbook.
   }
   return out;
+}
+
+/** Marks lines added from an outlet's own upload rather than read from the workbook. */
+export const OUTLET_UPLOAD_SHEET = "Outlet upload";
+
+/**
+ * Put CSGs the workbook does not list at this outlet on the outlet's page now,
+ * one line per product on the document. They are added to the current snapshot,
+ * so they show in every total at once; the next workbook upload replaces the
+ * snapshot, so the workbook needs the same CSGs added by hand. Re-sending a CSG
+ * replaces the line it added before. Throws if no workbook has been uploaded.
+ */
+export async function addOutletLines(
+  outlet: { outlet: string; owner: string; state: string; town: string },
+  docs: ParsedDoc[],
+) {
+  const [info] = await recentImports(1);
+  if (!info) throw new Error("No workbook has been uploaded yet.");
+  const importId = BigInt(info.id);
+
+  const data = docs.flatMap(d => {
+    const byProduct = new Map<string, { product: string; family: string; qty: number }>();
+    for (const l of d.lines) {
+      const p = normalizeProduct(l.description);
+      const cur = byProduct.get(p.product);
+      byProduct.set(p.product, { ...p, qty: (cur?.qty ?? 0) + l.qty });
+    }
+    return [...byProduct.values()].filter(p => p.qty > 0).map(p => ({
+      importId, sheet: OUTLET_UPLOAD_SHEET, rowNo: 0, owner: outlet.owner, state: outlet.state, town: outlet.town, outlet: outlet.outlet,
+      product: p.product, family: p.family, csgNo: d.csgNo, csgDate: d.docDate ? new Date(`${d.docDate}T00:00:00Z`) : null,
+      qty: p.qty, needsRefresh: false, tag: null as string | null,
+    }));
+  });
+
+  await prisma.$transaction(async tx => {
+    await tx.consignmentLine.deleteMany({ where: { importId, sheet: OUTLET_UPLOAD_SHEET, outlet: outlet.outlet, csgNo: { in: docs.map(d => d.csgNo) } } });
+    if (data.length) await tx.consignmentLine.createMany({ data });
+    // Keep the import's own totals in step with its lines.
+    const [count, sum] = await Promise.all([
+      tx.consignmentLine.count({ where: { importId } }),
+      tx.consignmentLine.aggregate({ where: { importId }, _sum: { qty: true } }),
+    ]);
+    await tx.consignmentImport.update({ where: { id: importId }, data: { lines: count, units: sum._sum.qty ?? 0 } });
+  }, { timeout: 30_000 });
+  return { lines: data.length, units: data.reduce((s, l) => s + l.qty, 0) };
 }
 
 export type Snapshot = { info: ImportInfo; lines: Line[]; outlets: OutletRef[] };
