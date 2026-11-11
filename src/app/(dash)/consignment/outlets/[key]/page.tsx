@@ -84,13 +84,12 @@ export default async function OutletPage({ params, searchParams }: {
           )}
         </section>
 
-        {csgs.length === 0 ? (
-          <p className="rounded-xl border border-line bg-quiet px-4 py-8 text-center text-sm text-ink-2">
-            The workbook lists no consignment stock at this outlet, so it needs no CSG files.
+        {csgs.length === 0 && (
+          <p className="rounded-xl border border-line bg-quiet px-4 py-6 text-center text-sm text-ink-2">
+            The workbook lists no consignment stock at this outlet. Upload its file below and the CSGs in it go live here.
           </p>
-        ) : (
-          <OutletFiles csgs={csgs} docs={docs} />
         )}
+        <OutletFiles csgs={csgs} docs={docs} outletKey={row.key} />
       </div>
     </>
   );

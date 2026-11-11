@@ -1,7 +1,7 @@
 "use client";
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ageText, csgFiles, fmtDate, fmtInt, type CsgGroup } from "@/lib/consignment/analyze";
+import { ageText, csgFiles, docKey, fmtDate, fmtInt, type CsgGroup } from "@/lib/consignment/analyze";
 import { BAND_BG, BAND_LABEL } from "./shelf-life";
 import { CsgDetails, forgetDetails } from "./csg-details";
 import { Chip, TAG_NOTE } from "./outlet-table";
@@ -10,6 +10,9 @@ export type DocMeta = { fileName: string | null; uploadedAt: string; uploadedBy:
 
 type Sent = { ok: true; csgNos: string[]; warnings: string[] } | { ok: false; error: string };
 type RowNote = { busy: boolean; error?: string; warnings?: string[] };
+type OutletResult =
+  | { ok: true; filed: { csgNo: string; boxes: number }[]; added: { csgNo: string; boxes: number }[]; skipped: { csgNo: string; at: string[] }[]; warnings: string[] }
+  | { ok: false; error: string };
 type BulkRow = { name: string; state: "waiting" | "sending" | "saved" | "error"; note?: string };
 
 async function sendFile(file: File, expect: string[]): Promise<Sent> {
@@ -26,18 +29,33 @@ async function sendFile(file: File, expect: string[]): Promise<Sent> {
   }
 }
 
+async function sendOutletFile(file: File, outletKey: string): Promise<OutletResult> {
+  try {
+    const body = new FormData();
+    body.set("file", file);
+    const res = await fetch(`/api/consignment/outlets/${encodeURIComponent(outletKey)}/docs`, { method: "POST", body });
+    const json = await res.json().catch(() => ({}));
+    return res.ok ? json : { ok: false, error: json.error ?? "Upload failed." };
+  } catch {
+    return { ok: false, error: "Upload failed. Check your connection and try again." };
+  }
+}
+
+const boxes = (n: number) => `${n.toLocaleString("en-MY")} ${n === 1 ? "box" : "boxes"}`;
+
 /**
  * The checklist of CSG files this outlet needs. Each CSG takes its own file
  * where it sits; dropping several anywhere on the list files each one under the
  * CSG it belongs to.
  */
-export function OutletFiles({ csgs, docs }: { csgs: CsgGroup[]; docs: Record<string, DocMeta> }) {
+export function OutletFiles({ csgs, docs, outletKey }: { csgs: CsgGroup[]; docs: Record<string, DocMeta>; outletKey: string }) {
   const router = useRouter();
   const [notes, setNotes] = useState<Record<string, RowNote>>({});
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [bulk, setBulk] = useState<BulkRow[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [over, setOver] = useState(false);
+  const [whole, setWhole] = useState<{ busy: boolean; name?: string; result?: OutletResult }>({ busy: false });
 
   const uploadable = csgs.filter(c => c.csgNo);
   const expectAll = uploadable.map(c => c.csgNo!);
@@ -77,6 +95,15 @@ export function OutletFiles({ csgs, docs }: { csgs: CsgGroup[]; docs: Record<str
     router.refresh();
   }
 
+  // One file with all of this outlet's CSG documents; it goes live as soon as it is saved.
+  async function uploadWhole(file: File) {
+    setWhole({ busy: true, name: file.name });
+    const r = await sendOutletFile(file, outletKey);
+    if (r.ok) [...r.filed, ...r.added].forEach(d => forgetDetails(docKey(d.csgNo)));
+    setWhole({ busy: false, name: file.name, result: r });
+    if (r.ok) router.refresh();
+  }
+
   const saved = bulk.filter(b => b.state === "saved").length;
   const failed = bulk.filter(b => b.state === "error").length;
 
@@ -99,6 +126,15 @@ export function OutletFiles({ csgs, docs }: { csgs: CsgGroup[]; docs: Record<str
                 : `${files.have} of ${files.need} uploaded. Upload each file on its row, or drop several anywhere on this list.`}
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+        <label className={`cursor-pointer rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm font-semibold text-ink-2 transition-colors hover:border-brand hover:text-ink focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-brand ${whole.busy ? "pointer-events-none opacity-50" : ""}`}>
+          {whole.busy ? "Uploading…" : "Upload outlet file"}
+          <input
+            type="file" accept=".xlsx" className="sr-only" disabled={whole.busy}
+            aria-label="Upload one file with all of this outlet's CSG documents"
+            onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) uploadWhole(f); }}
+          />
+        </label>
         {files.need > 1 && (
           <label className={`cursor-pointer rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm font-semibold text-ink-2 transition-colors hover:border-brand hover:text-ink focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-brand ${bulkBusy ? "pointer-events-none opacity-50" : ""}`}>
             {bulkBusy ? "Uploading…" : "Upload several files"}
@@ -108,9 +144,35 @@ export function OutletFiles({ csgs, docs }: { csgs: CsgGroup[]; docs: Record<str
             />
           </label>
         )}
+        </div>
       </div>
 
       <div role="status" aria-live="polite">
+        {whole.result && (
+          <div className="border-t border-line bg-quiet px-4 py-2.5 text-sm text-ink-2">
+            {whole.result.ok ? (
+              <>
+                <p className="font-semibold text-ok">
+                  {whole.name} is live: {whole.result.filed.length + whole.result.added.length} {whole.result.filed.length + whole.result.added.length === 1 ? "CSG" : "CSGs"} saved.
+                </p>
+                <ul className="mt-1 flex flex-col gap-0.5">
+                  {whole.result.filed.length > 0 && (
+                    <li>Filed under the workbook&apos;s CSGs: {whole.result.filed.map(d => `${d.csgNo} (${boxes(d.boxes)})`).join(", ")}.</li>
+                  )}
+                  {whole.result.added.length > 0 && (
+                    <li className="text-ink">Added to this outlet: {whole.result.added.map(d => `${d.csgNo} (${boxes(d.boxes)})`).join(", ")}.</li>
+                  )}
+                  {whole.result.skipped.map(s => (
+                    <li key={s.csgNo} className="text-warn">{s.csgNo} left out: the workbook has it at {s.at.join(", ")}.</li>
+                  ))}
+                  {whole.result.warnings.map((w, i) => <li key={i} className="text-warn">{w}</li>)}
+                </ul>
+              </>
+            ) : (
+              <p role="alert" className="font-semibold text-danger">{whole.name}: {whole.result.error}</p>
+            )}
+          </div>
+        )}
         {bulk.length > 0 && (
           <div className="border-t border-line bg-quiet px-4 py-2.5 text-sm text-ink-2">
             {!bulkBusy && (
