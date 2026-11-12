@@ -108,6 +108,18 @@ export async function loadReturnSummary(): Promise<Map<string, ReturnSummary>> {
   return out;
 }
 
+/** The CSR codes stored against each of these CSGs (normalised numbers), oldest first. Never throws. */
+export async function loadReturnCodes(csgKeys: string[]): Promise<Record<string, string[]>> {
+  try {
+    const rows = await prisma.consignmentReturn.findMany({ where: { kind: "CSR", csgKey: { in: csgKeys } }, select: { code: true, csgKey: true } });
+    const out: Record<string, { code: string; seq: number }[]> = {};
+    for (const r of rows) (out[r.csgKey] ??= []).push({ code: r.code, seq: parseReturnCode(r.code)?.seq ?? 0 });
+    return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, v.sort((a, b) => a.seq - b.seq).map(x => x.code)]));
+  } catch {
+    return {};
+  }
+}
+
 export async function recentReturns(take = 300) {
   const rows = await prisma.consignmentReturn.findMany({ where: { kind: "CSR" }, orderBy: { uploadedAt: "desc" }, take });
   return rows.map(r => ({

@@ -21,6 +21,8 @@ export type Line = {
   tag: Tag | null;
   /** The latest CSR uploaded against this CSG, when there is one. */
   latestCode?: string | null;
+  /** Added from an outlet's own upload, not read from the workbook. */
+  added?: boolean;
 };
 
 export type OutletRef = { outlet: string; owner: string; state: string; town: string };
@@ -264,6 +266,8 @@ export type CsgGroup = {
   tags: Tag[];
   /** The latest CSR uploaded against this CSG. */
   latestCode: string | null;
+  /** Every line of it was added from an outlet upload, so it can be taken off again. */
+  added: boolean;
 };
 
 /** One entry per CSG, oldest first. A CSG can cover several products; a line with no CSG number stands alone. */
@@ -275,10 +279,11 @@ export function groupCsgs(lines: AgedLine[]): CsgGroup[] {
     if (!g) {
       map.set(id, (g = {
         id, csgNo: l.csgNo, docKey: l.csgNo ? docKey(l.csgNo) : null, csgDate: l.csgDate, days: l.days, band: l.band,
-        units: 0, products: [], needsRefresh: false, tags: [], latestCode: l.latestCode ?? null,
+        units: 0, products: [], needsRefresh: false, tags: [], latestCode: l.latestCode ?? null, added: true,
       }));
     }
     g.units += l.qty;
+    g.added &&= !!l.added;
     g.needsRefresh ||= l.needsRefresh;
     if (l.tag && !g.tags.includes(l.tag)) g.tags.push(l.tag);
     const p = g.products.find(x => x.product === l.product);

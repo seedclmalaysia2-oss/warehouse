@@ -4,6 +4,7 @@ import {
 } from "@/lib/consignment/analyze";
 import { loadSnapshot, type Snapshot } from "@/lib/consignment/store";
 import { loadDocMeta } from "@/lib/consignment/doc-store";
+import { loadReturnCodes } from "@/lib/consignment/return-store";
 import { PageHeader } from "@/components/page-header";
 import { ChecklistPills } from "@/components/consignment/checklist-pills";
 import { OutletFiles, type DocMeta } from "@/components/consignment/outlet-files";
@@ -56,6 +57,7 @@ export default async function OutletPage({ params, searchParams }: {
   const docs: Record<string, DocMeta> = Object.fromEntries(
     meta.map(m => [docKey(m.csgNo), { fileName: m.fileName, uploadedAt: m.uploadedAt, uploadedBy: m.uploadedBy }]),
   );
+  const returns = await loadReturnCodes([...new Set(csgs.flatMap(c => (c.docKey ? [c.docKey] : [])))]);
   const files = csgFiles(row.lines, new Set(Object.keys(docs)));
   const place = [row.town, row.state].filter(Boolean).join(", ");
   const owners = row.owners.join(", ");
@@ -89,7 +91,7 @@ export default async function OutletPage({ params, searchParams }: {
             The workbook lists no consignment stock at this outlet. Upload its file below and the CSGs in it go live here.
           </p>
         )}
-        <OutletFiles csgs={csgs} docs={docs} outletKey={row.key} />
+        <OutletFiles csgs={csgs} docs={docs} returns={returns} outletKey={row.key} />
       </div>
     </>
   );
