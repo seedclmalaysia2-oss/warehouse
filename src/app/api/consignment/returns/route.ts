@@ -1,8 +1,10 @@
 import { getAccess, guardDept } from "@/lib/auth";
+import { docKey, outletKey } from "@/lib/consignment/analyze";
 import { DocError, parseCsgDocs, type ParsedDoc, type ParsedDocs } from "@/lib/consignment/doc-parse";
 import { readDocSheets } from "@/lib/consignment/doc-read";
 import { parseReturnCode, takeOff } from "@/lib/consignment/return-apply";
 import { csaKeys, loadCsgBoxes, loadReturnsFor, saveReturns } from "@/lib/consignment/return-store";
+import { loadCsgOutlets } from "@/lib/consignment/store";
 
 const MAX_BYTES = 4 * 1024 * 1024; // Vercel caps request bodies at 4.5 MB
 export const maxDuration = 120;
@@ -38,6 +40,9 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
   const proceed = form?.get("proceed") === "1";
+  // Sent from an outlet's page: only CSRs for a CSG listed at that outlet (and, from a CSG's row, for that CSG) are taken.
+  const onlyOutlet = String(form?.get("outlet") ?? "").trim() ? outletKey(String(form?.get("outlet"))) : null;
+  const onlyCsg = String(form?.get("csg") ?? "").trim() ? docKey(String(form?.get("csg"))) : null;
   if (!(file instanceof File)) return Response.json({ error: "Choose a CSR file (.xlsx)." }, { status: 400 });
   if (!/\.xlsx$/i.test(file.name)) return Response.json({ error: "The file must be an .xlsx file." }, { status: 400 });
   if (file.size > MAX_BYTES) return Response.json({ error: "That file is too large (4 MB max). Split it into smaller files." }, { status: 413 });
@@ -62,10 +67,15 @@ export async function POST(req: Request) {
 
     const csg = await loadCsgBoxes(csr.map(c => c.csgKey));
     const csa = await csaKeys();
+    const listed = onlyOutlet ? await loadCsgOutlets() : null;
     const ready: ParsedDoc[] = [];
     for (const { doc, csgKey } of csr) {
       const base = { code: doc.csgNo, csgKey, outlet: doc.fromCounter, boxes: boxesOf(doc) };
-      if (!csg.has(csgKey)) {
+      if (onlyCsg && csgKey !== onlyCsg) {
+        results.push({ ...base, state: "no-csg", reason: `${doc.csgNo} comes off ${csgKey}, not ${onlyCsg}. Nothing was saved for it.` });
+      } else if (listed && !(listed.get(csgKey) ?? []).some(o => outletKey(o) === onlyOutlet)) {
+        results.push({ ...base, state: "no-csg", reason: `${csgKey} is not listed at this outlet. Nothing was saved for it.` });
+      } else if (!csg.has(csgKey)) {
         results.push({ ...base, state: "no-csg", reason: `${csgKey} has not been uploaded. Upload the CSG first, then this CSR.` });
       } else if (!csa.has(csgKey) && !proceed) {
         results.push({ ...base, state: "confirm", reason: `No CSA is on record for ${csgKey}.` });

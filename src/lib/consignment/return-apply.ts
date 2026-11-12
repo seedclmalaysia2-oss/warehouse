@@ -60,3 +60,13 @@ export function parseReturnCode(code: string): { csgKey: string; seq: number } |
   const m = code.toUpperCase().replace(/\s+/g, "").match(/^CSR(\d+)(?:\((\d+)\))?$/);
   return m ? { csgKey: `CSG${m[1]}`, seq: m[2] ? Number(m[2]) : 0 } : null;
 }
+
+/**
+ * A CSR is not stock. Every CSG upload keeps CSRs out, so a CSR dropped on the
+ * wrong button is turned away instead of being filed as a CSG.
+ */
+export function withoutReturns<T extends { csgNo: string }>(docs: T[]): { docs: T[]; returns: string[] } {
+  return { docs: docs.filter(d => !parseReturnCode(d.csgNo)), returns: docs.filter(d => parseReturnCode(d.csgNo)).map(d => d.csgNo) };
+}
+
+export const CSR_ONLY = "This is a CSR. Use Upload CSR file for it.";

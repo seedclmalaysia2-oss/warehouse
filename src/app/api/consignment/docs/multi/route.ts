@@ -3,6 +3,7 @@ import { docKey } from "@/lib/consignment/analyze";
 import { DocError, parseCsgDocs, type ParsedDocs } from "@/lib/consignment/doc-parse";
 import { readDocSheets } from "@/lib/consignment/doc-read";
 import { saveDocs } from "@/lib/consignment/doc-store";
+import { CSR_ONLY, withoutReturns } from "@/lib/consignment/return-apply";
 import { loadCsgOutlets } from "@/lib/consignment/store";
 
 const MAX_BYTES = 4 * 1024 * 1024; // Vercel caps request bodies at 4.5 MB
@@ -33,6 +34,10 @@ export async function POST(req: Request) {
     const msg = e instanceof DocError ? e.message : "Could not read that file as an .xlsx document.";
     return Response.json({ error: msg }, { status: 422 });
   }
+
+  const split = withoutReturns(parsed.docs);
+  if (!split.docs.length && split.returns.length) return Response.json({ error: `${split.returns.join(", ")}: ${CSR_ONLY}` }, { status: 422 });
+  parsed = { docs: split.docs, warnings: [...parsed.warnings, ...split.returns.map(c => `${c} is a CSR, so it was left out.`)] };
 
   const access = await getAccess();
   const by = access.kind === "ok" ? access.staff.email : "unknown";

@@ -3,6 +3,7 @@ import { docKey, outletKey } from "@/lib/consignment/analyze";
 import { DocError, parseCsgDocs, type ParsedDoc, type ParsedDocs } from "@/lib/consignment/doc-parse";
 import { readDocSheets } from "@/lib/consignment/doc-read";
 import { saveDocs } from "@/lib/consignment/doc-store";
+import { CSR_ONLY, withoutReturns } from "@/lib/consignment/return-apply";
 import { addOutletLines, loadCsgOutlets, loadSnapshot } from "@/lib/consignment/store";
 
 const MAX_BYTES = 4 * 1024 * 1024; // Vercel caps request bodies at 4.5 MB
@@ -48,6 +49,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ key: string }>
     return Response.json({ error: msg }, { status: 422 });
   }
   if (!parsed.docs.length) return Response.json({ error: "No CSG document was found in that file." }, { status: 422 });
+  // A CSR is not stock: it goes in through Upload CSR file, never in as a CSG.
+  const split = withoutReturns(parsed.docs);
+  if (!split.docs.length) return Response.json({ error: `${split.returns.join(", ")}: ${CSR_ONLY}` }, { status: 422 });
+  parsed = { docs: split.docs, warnings: [...parsed.warnings, ...split.returns.map(c => `${c} is a CSR, so it was left out. Use Upload CSR file for it.`)] };
 
   try {
     const snap = await loadSnapshot();

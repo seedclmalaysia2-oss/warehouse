@@ -157,6 +157,15 @@ export async function deleteDoc(csgNo: string): Promise<boolean> {
   return gone.count > 0;
 }
 
+/** Remove every stored document whose number normalises to this one (CSG03008 and CSG03008(1) are one CSG). */
+export async function deleteDocsByKey(key: string): Promise<number> {
+  const rows = await prisma.consignmentDoc.findMany({ select: { id: true, csgNo: true } });
+  const ids = rows.filter(r => docKey(r.csgNo) === key).map(r => r.id);
+  if (!ids.length) return 0;
+  const gone = await prisma.consignmentDoc.deleteMany({ where: { id: { in: ids } } });
+  return gone.count;
+}
+
 export async function docCount(): Promise<number> {
   return prisma.consignmentDoc.count();
 }
