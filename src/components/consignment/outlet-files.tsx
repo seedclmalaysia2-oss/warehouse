@@ -46,6 +46,7 @@ async function sendOutletFile(file: File, outletKey: string): Promise<OutletResu
 const boxes = (n: number) => `${n.toLocaleString("en-MY")} ${n === 1 ? "box" : "boxes"}`;
 
 const btn = "whitespace-nowrap rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm font-semibold text-ink-2 transition-colors hover:border-brand hover:text-ink focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-brand";
+const danger = "whitespace-nowrap rounded-md border border-line-strong px-2 py-0.5 text-center text-xs font-semibold text-danger transition-colors hover:border-danger focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand disabled:cursor-not-allowed disabled:hover:border-line-strong";
 const small = "whitespace-nowrap rounded-md border border-line-strong px-2 py-0.5 text-xs font-semibold text-ink-2 transition-colors hover:border-brand hover:text-ink focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-brand";
 
 /**
@@ -145,7 +146,7 @@ export function OutletFiles({ csgs, docs, returns, outletKey }: {
   async function removeCsg(c: CsgGroup) {
     const what = c.added
       ? `Remove ${c.csgNo} from this outlet? Its file is deleted and the ${fmtInt(c.units)} units it added come off the outlet.`
-      : `Delete the file for ${c.csgNo}? Details go back to "Not uploaded". The workbook figures stay as they are, and any CSRs are kept.`;
+      : `Delete the CSG file for ${c.csgNo}? Details go back to "Not uploaded". The workbook figures stay as they are, and any CSRs are kept.`;
     if (!window.confirm(what)) return;
     await remove(`csg:${c.id}`, `/api/consignment/outlets/${encodeURIComponent(outletKey)}/docs/${encodeURIComponent(c.csgNo!)}`, () => c.docKey && forgetDetails(c.docKey));
   }
@@ -377,10 +378,12 @@ function CsgRow({ c, doc, note, isOpen, csrCodes, locked, removing, onToggle, on
   );
 
   const canDelete = !!doc || c.added;
+  // The newest CSR is the one Delete CSR takes off; older ones follow once it is gone.
+  const latestCsr = csrCodes.length ? csrCodes[csrCodes.length - 1] : null;
 
   return (
     <li {...drop} className={`border-t border-line ${over ? "bg-quiet" : ""}`}>
-      <div className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 px-4 py-3 md:grid-cols-[1.25rem_13rem_minmax(0,1fr)_3.5rem_11.5rem]">
+      <div className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 px-4 py-3 md:grid-cols-[1.25rem_13rem_minmax(0,1fr)_3.5rem_13rem]">
         <span
           aria-hidden
           className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
@@ -395,15 +398,7 @@ function CsgRow({ c, doc, note, isOpen, csrCodes, locked, removing, onToggle, on
           {csrCodes.length > 0 ? (
             <ul className="mt-0.5 flex flex-col gap-0.5">
               {csrCodes.map(code => (
-                <li key={code} className="flex items-center gap-2 font-mono text-xs text-brand">
-                  <span title="A CSR uploaded against this CSG">{code}</span>
-                  <button
-                    type="button" disabled={removing === `csr:${code}`} onClick={() => onRemoveCsr(code)} aria-label={`Delete ${code}`}
-                    className="rounded font-sans text-xs font-semibold text-danger hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand disabled:opacity-50"
-                  >
-                    {removing === `csr:${code}` ? "Deleting…" : "Delete"}
-                  </button>
-                </li>
+                <li key={code} className="font-mono text-xs text-brand" title="A CSR uploaded against this CSG">{code}</li>
               ))}
             </ul>
           ) : c.latestCode ? (
@@ -451,21 +446,34 @@ function CsgRow({ c, doc, note, isOpen, csrCodes, locked, removing, onToggle, on
                 </button>
               )}
               {!isCsr && (
-                <div className="flex flex-wrap justify-end gap-1.5">
+                <div className="grid grid-cols-2 gap-1.5">
                   {picker(
                     "Upload CSG",
-                    doc ? small : "whitespace-nowrap rounded-lg border-2 border-dashed border-line-strong px-3 py-1 text-sm font-semibold text-ink transition-colors hover:border-brand hover:bg-quiet",
+                    `${doc ? small : "whitespace-nowrap rounded-md border-2 border-dashed border-line-strong px-2 py-0.5 text-xs font-semibold text-ink transition-colors hover:border-brand hover:bg-quiet"} text-center`,
                     onFile, `Upload the CSG file for ${c.csgNo}`,
                   )}
-                  {picker("Upload CSR", small, onCsr, `Upload a CSR file for ${c.csgNo}`)}
+                  <button
+                    type="button" disabled={!canDelete || removing === `csg:${c.id}` || locked} onClick={onRemove}
+                    className={`${danger} ${canDelete ? "" : "opacity-40"}`}
+                  >
+                    {removing === `csg:${c.id}` ? "Deleting…" : "Delete CSG"}
+                  </button>
+                  {picker("Upload CSR", `${small} text-center`, onCsr, `Upload a CSR file for ${c.csgNo}`)}
+                  <button
+                    type="button" disabled={!latestCsr || removing === `csr:${latestCsr}` || locked} onClick={() => latestCsr && onRemoveCsr(latestCsr)}
+                    title={latestCsr ? `Deletes ${latestCsr}, the latest CSR` : "No CSR uploaded for this CSG"}
+                    className={`${danger} ${latestCsr ? "" : "opacity-40"}`}
+                  >
+                    {latestCsr && removing === `csr:${latestCsr}` ? "Deleting…" : "Delete CSR"}
+                  </button>
                 </div>
               )}
-              {canDelete && (
+              {isCsr && canDelete && (
                 <button
                   type="button" disabled={removing === `csg:${c.id}` || locked} onClick={onRemove}
                   className="rounded px-1 text-xs font-semibold text-danger hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand disabled:opacity-50"
                 >
-                  {removing === `csg:${c.id}` ? "Deleting…" : c.added ? "Remove from outlet" : "Delete CSG file"}
+                  {removing === `csg:${c.id}` ? "Deleting…" : "Remove from outlet"}
                 </button>
               )}
             </>
