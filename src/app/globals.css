@@ -502,6 +502,26 @@
 .brand-name { display: block; font-family: var(--font-display); font-weight: 600; font-size: 1.125rem; line-height: 1.1; }
 .brand-sub { display: block; font-size: 0.75rem; color: var(--text-muted); }
 
+/* Build label and refresh button under the brand: "202611 build 00055" on the live site, "test build" elsewhere. */
+.brand-block { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.build-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.brand-ver { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--text-muted); letter-spacing: .01em; white-space: nowrap; }
+.refresh-btn {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.refresh-btn:hover { border-color: var(--ink-600); color: var(--text-primary); }
+.refresh-btn:focus-visible { outline: 2px solid var(--ink-600); outline-offset: 2px; }
+
 .nav { display: flex; flex-direction: column; gap: 2px; }
 
 .nav a {

@@ -18,6 +18,7 @@ project), own schema `warehouse`.
 | `/email-settings/server` | Sending server (SMTP) | live |
 
 The list lives in `src/lib/pages.ts`; the sidebar and overview both read it.
+Under the brand in the sidebar sits the build label (`202611 build 00055`: the month the build went live, Malaysia time, and a running number from the shared `public.app_build` table, app `warehouse`, taken on the first page view of each production deployment; `src/lib/build-number.ts`) with a refresh button; anywhere but the live site it reads `test build`.
 Each shell page states what it will show and what it still needs.
 
 ## Run it
