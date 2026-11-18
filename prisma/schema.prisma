@@ -251,6 +251,28 @@ model ConsignmentReturn {
   @@schema("warehouse")
 }
 
+// A deleted CSG or CSR file, with a copy of the deleted rows in `payload` so it
+// can be restored. Rows are never removed; a restore stamps restoredAt.
+model ConsignmentTrash {
+  id         BigInt    @id @default(autoincrement())
+  kind       String // "CSG" | "CSR"
+  code       String
+  outletKey  String?   @map("outlet_key")
+  outlet     String    @default("")
+  boxes      Int       @default(0)
+  fileName   String    @default("") @map("file_name")
+  payload    Json
+  deletedAt  DateTime  @default(now()) @map("deleted_at")
+  deletedBy  String?   @map("deleted_by")
+  restoredAt DateTime? @map("restored_at")
+  restoredBy String?   @map("restored_by")
+
+  @@index([outletKey, deletedAt])
+  @@index([deletedAt])
+  @@map("consignment_trash")
+  @@schema("warehouse")
+}
+
 // One box on a CSR: the same shape as a CSG line, so it can be taken off it.
 model ConsignmentReturnLine {
   id          BigInt            @id @default(autoincrement())

@@ -1,6 +1,7 @@
-import { guardDept } from "@/lib/auth";
+import { getAccess, guardDept } from "@/lib/auth";
 import { buildMatrix } from "@/lib/consignment/doc-matrix";
-import { deleteDoc, loadDoc } from "@/lib/consignment/doc-store";
+import { loadDoc } from "@/lib/consignment/doc-store";
+import { trashCsg } from "@/lib/consignment/trash-store";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ csgNo: string }> }) {
   const denied = await guardDept();
@@ -25,8 +26,10 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ csgNo: stri
   const csgNo = decodeURIComponent((await ctx.params).csgNo).trim().toUpperCase();
   if (!/^CS[GF]?\d+$/.test(csgNo)) return Response.json({ error: "Unknown CSG number." }, { status: 400 });
   try {
-    const removed = await deleteDoc(csgNo);
-    return removed ? Response.json({ ok: true }) : Response.json({ error: "That CSG has no uploaded details." }, { status: 404 });
+    const access = await getAccess();
+    const by = access.kind === "ok" ? access.staff.email : "unknown";
+    const r = await trashCsg(csgNo, by, null);
+    return r.docs ? Response.json({ ok: true, logged: r.logged }) : Response.json({ error: "That CSG has no uploaded details." }, { status: 404 });
   } catch {
     return Response.json({ error: "Could not remove the details." }, { status: 500 });
   }

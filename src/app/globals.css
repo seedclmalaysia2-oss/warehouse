@@ -767,3 +767,15 @@ a.submit { display: block; text-align: center; text-decoration: none; }
 /* SEED contact lens logo in place of the letter badge */
 .login-card .login-logo { display: block; width: 180px; max-width: 70%; height: auto; margin: 0 auto 2px; border-radius: 12px; background: #fff; }
 .brand .brand-logo { flex: none; width: 64px; height: auto; border-radius: 8px; background: #fff; }
+
+/* Printing: only the page content, on white, with the sidebar and page chrome left out. */
+@media print {
+  @page { size: A4 landscape; margin: 12mm; }
+  .sidebar { display: none !important; }
+  .shell { display: block !important; }
+  .main { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+  body { background: #fff !important; color: #141a3d !important; }
+  .report-sheet thead { display: table-header-group; }
+  .report-sheet tfoot { display: table-row-group; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

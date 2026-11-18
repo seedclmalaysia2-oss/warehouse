@@ -5,6 +5,8 @@ import {
 import { loadSnapshot, type Snapshot } from "@/lib/consignment/store";
 import { loadDocMeta } from "@/lib/consignment/doc-store";
 import { loadReturnCodes } from "@/lib/consignment/return-store";
+import { loadTrash, trashReady } from "@/lib/consignment/trash-store";
+import { DeletedLog } from "@/components/consignment/deleted-log";
 import { PageHeader } from "@/components/page-header";
 import { ChecklistPills } from "@/components/consignment/checklist-pills";
 import { OutletFiles, type DocMeta } from "@/components/consignment/outlet-files";
@@ -58,6 +60,7 @@ export default async function OutletPage({ params, searchParams }: {
     meta.map(m => [docKey(m.csgNo), { fileName: m.fileName, uploadedAt: m.uploadedAt, uploadedBy: m.uploadedBy }]),
   );
   const returns = await loadReturnCodes([...new Set(csgs.flatMap(c => (c.docKey ? [c.docKey] : [])))]);
+  const [trash, logReady] = await Promise.all([loadTrash({ outletKey: row.key }), trashReady()]);
   const files = csgFiles(row.lines, new Set(Object.keys(docs)));
   const place = [row.town, row.state].filter(Boolean).join(", ");
   const owners = row.owners.join(", ");
@@ -92,6 +95,7 @@ export default async function OutletPage({ params, searchParams }: {
           </p>
         )}
         <OutletFiles csgs={csgs} docs={docs} returns={returns} outletKey={row.key} />
+        <DeletedLog entries={trash} ready={logReady} />
       </div>
     </>
   );
