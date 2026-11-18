@@ -146,14 +146,14 @@ export function OutletFiles({ csgs, docs, returns, outletKey }: {
   async function removeCsg(c: CsgGroup) {
     const what = c.added
       ? `Remove ${c.csgNo} from this outlet? Its file is deleted and the ${fmtInt(c.units)} units it added come off the outlet.`
-      : `Delete the CSG file for ${c.csgNo}? Details go back to "Not uploaded". The workbook figures stay as they are, and any CSRs are kept.`;
+      : `Delete the CSG file for ${c.csgNo}? Details go back to "Not uploaded". The workbook figures stay as they are, and any CSRs are kept. The file is kept under Deleted files, where you can restore it.`;
     if (!window.confirm(what)) return;
     await remove(`csg:${c.id}`, `/api/consignment/outlets/${encodeURIComponent(outletKey)}/docs/${encodeURIComponent(c.csgNo!)}`, () => c.docKey && forgetDetails(c.docKey));
   }
 
   async function removeCsr(code: string, key: string | null) {
-    if (!window.confirm(`Delete ${code}? Its boxes go back onto the CSG they came off.`)) return;
-    await remove(`csr:${code}`, `/api/consignment/returns/${encodeURIComponent(code)}`, () => key && forgetDetails(key));
+    if (!window.confirm(`Delete ${code}? Its boxes go back onto the CSG they came off. It is kept under Deleted files, where you can restore it.`)) return;
+    await remove(`csr:${code}`, `/api/consignment/returns/${encodeURIComponent(code)}?outlet=${encodeURIComponent(outletKey)}`, () => key && forgetDetails(key));
   }
 
   async function remove(id: string, url: string, after: () => unknown) {

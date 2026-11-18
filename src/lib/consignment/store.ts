@@ -90,7 +90,7 @@ export async function loadCsgOutlets(): Promise<Map<string, string[]>> {
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 /** Keep the import's own totals in step with its lines. */
-async function syncImportTotals(tx: Tx, importId: bigint) {
+export async function syncImportTotals(tx: Tx, importId: bigint) {
   const [count, sum] = await Promise.all([
     tx.consignmentLine.count({ where: { importId } }),
     tx.consignmentLine.aggregate({ where: { importId }, _sum: { qty: true } }),
