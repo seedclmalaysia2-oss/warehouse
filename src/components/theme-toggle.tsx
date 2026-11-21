@@ -25,8 +25,18 @@ function apply(c: Choice) {
   else root.dataset.theme = c;
 }
 
+const NEXT: Record<Choice, Choice> = { light: "dark", dark: "system", system: "light" };
+
+const ICONS: Record<Choice, React.ReactNode> = {
+  light: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
+  dark: <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />,
+  system: <><circle cx="12" cy="12" r="8.5" /><path d="M12 3.5v17A8.5 8.5 0 0 0 12 3.5Z" fill="currentColor" /></>,
+};
+
 // Light / Dark / Auto. Auto removes the override so the device setting decides.
-export function ThemeToggle() {
+// `icon`: one small round button for the top bar showing the current choice; each press moves
+// Light -> Dark -> Auto, so all three choices stay available.
+export function ThemeToggle({ icon = false }: { icon?: boolean }) {
   // Unknown until mounted, so the server HTML and first client render agree.
   const [choice, setChoice] = useState<Choice | null>(null);
 
@@ -52,6 +62,20 @@ export function ThemeToggle() {
     } catch {
       // Storage blocked (private window): the choice still applies until reload.
     }
+  }
+
+  if (icon) {
+    const now = choice ?? "system";
+    const label = OPTIONS.find(o => o.value === now)!;
+    const next = OPTIONS.find(o => o.value === NEXT[now])!;
+    return (
+      <button type="button" className="icon-btn" onClick={() => pick(NEXT[now])}
+              aria-label={`Colour theme: ${label.label}. Switch to ${next.label}`} title={`${label.title} (press for ${next.label})`}>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          {ICONS[now]}
+        </svg>
+      </button>
+    );
   }
 
   return (

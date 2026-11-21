@@ -771,11 +771,83 @@ a.submit { display: block; text-align: center; text-decoration: none; }
 /* Printing: only the page content, on white, with the sidebar and page chrome left out. */
 @media print {
   @page { size: A4 landscape; margin: 12mm; }
-  .sidebar { display: none !important; }
+  .sidebar, .tb { display: none !important; }
   .shell { display: block !important; }
   .main { padding: 0 !important; margin: 0 !important; max-width: none !important; }
   body { background: #fff !important; color: #141a3d !important; }
   .report-sheet thead { display: table-header-group; }
   .report-sheet tfoot { display: table-row-group; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* ---------- top bar: the SEED house standard (2026-11-21, copied from the HR dashboard) ----------
+   One full-width row: logo, app pill, build, refresh and theme on the left; app-wide links in the
+   middle (the page you are on is the filled pill); who is signed in and the exit at the right end.
+   It spans the side menu, which starts under it. */
+.shell-top { --tb-h: 60px; grid-template-rows: auto 1fr; }
+.tb {
+  grid-column: 1 / -1;
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: 14px;
+  min-height: var(--tb-h); padding: 8px 20px;
+  background: var(--surface); border-bottom: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 2px rgba(20, 26, 61, .04);
+}
+.tb-left { display: flex; align-items: center; gap: 10px; flex: none; }
+.tb-brand { display: inline-flex; }
+.tb-logo { width: 58px; height: auto; border-radius: 6px; background: #fff; }
+.tb-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 999px; background: var(--ink-950); color: #f4f7ff; font-weight: 700; font-size: .8125rem; white-space: nowrap; }
+.tb-build { padding: 4px 9px; border-radius: 7px; background: var(--surface-quiet); border: 1px solid var(--border-subtle); color: var(--text-secondary); font-family: var(--font-mono); font-size: .6875rem; font-weight: 600; white-space: nowrap; }
+.tb .icon-btn, .tb .refresh-btn {
+  display: inline-grid; place-items: center; flex: none; width: 30px; height: 30px; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; color: var(--text-muted); cursor: pointer;
+}
+.tb .icon-btn:hover, .tb .refresh-btn:hover { background: var(--surface-quiet); color: var(--text-primary); }
+.tb .icon-btn svg, .tb .refresh-btn svg { width: 16px; height: 16px; }
+
+.tb-nav { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 2px; }
+.tb-nav .home-btn, .tb-nav .hub-home {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 6px 12px;
+  border: 0; border-radius: 999px; background: transparent; box-shadow: none;
+  color: var(--text-secondary); font: inherit; font-weight: 600; font-size: .875rem; letter-spacing: 0;
+  white-space: nowrap; text-decoration: none; cursor: pointer;
+}
+.tb-nav .home-btn:hover, .tb-nav .hub-home:hover { background: var(--surface-quiet); color: var(--text-primary); }
+.tb-nav .home-btn[aria-current="page"] { background: var(--ink-600); color: #fff; }
+.tb-nav svg { width: 16px; height: 16px; flex: none; }
+
+.tb-right { display: flex; align-items: center; gap: 12px; flex: none; padding-left: 14px; border-left: 1px solid var(--border-subtle); }
+.tb-who { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.tb-avatar { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--ice-100); color: var(--ink-700); font-weight: 700; font-size: .8125rem; }
+.tb-who-text { display: grid; line-height: 1.2; min-width: 0; }
+.tb-name { font-weight: 700; font-size: .875rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 18ch; }
+.tb-role { font-size: .75rem; color: var(--text-muted); white-space: nowrap; }
+.tb-exit { display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-secondary); cursor: pointer; }
+.tb-exit:hover { background: var(--surface-quiet); color: var(--accent); }
+.tb a:focus-visible, .tb button:focus-visible { outline: 2px solid var(--ink-600); outline-offset: 2px; }
+
+/* The side menu now holds only the pages, and starts under the bar. */
+.shell-top .sidebar { top: var(--tb-h); height: calc(100dvh - var(--tb-h)); padding-top: 20px; overflow-y: auto; }
+
+/* Narrower screens: the middle links scroll sideways inside their own row, never the page. */
+@media (max-width: 1280px) {
+  .tb { flex-wrap: wrap; row-gap: 6px; position: relative; }
+  .tb-nav { order: 3; flex: 1 1 100%; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
+  .tb-nav::-webkit-scrollbar { display: none; }
+  .tb-right { margin-left: auto; }
+  .shell-top .sidebar { top: 0; height: 100dvh; }
+}
+@media (max-width: 820px) {
+  .tb { padding: calc(8px + env(safe-area-inset-top)) 12px 8px; gap: 8px; }
+  .tb-logo { width: 46px; }
+  .tb-build { display: none; }
+  .tb-right { padding-left: 8px; gap: 6px; }
+  .tb-who-text { display: none; }
+  /* The side menu becomes the row of page links under the bar, as before. */
+  .shell-top { grid-template-rows: auto auto 1fr; }
+  .shell-top .sidebar { top: auto; height: auto; padding: 8px 16px; overflow: visible; }
+}
+@media (max-width: 420px) {
+  .tb-pill { padding: 5px 10px; font-size: .75rem; }
+  .tb-pill svg { display: none; }
 }
