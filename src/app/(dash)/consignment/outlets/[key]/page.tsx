@@ -6,6 +6,8 @@ import { loadSnapshot, type Snapshot } from "@/lib/consignment/store";
 import { loadDocMeta } from "@/lib/consignment/doc-store";
 import { loadReturnCodes } from "@/lib/consignment/return-store";
 import { loadTrash, trashReady } from "@/lib/consignment/trash-store";
+import { loadPhotos, photosReady } from "@/lib/consignment/photo-store";
+import { driveConfigured } from "@/lib/gdrive";
 import { DeletedLog } from "@/components/consignment/deleted-log";
 import { PageHeader } from "@/components/page-header";
 import { ChecklistPills } from "@/components/consignment/checklist-pills";
@@ -61,6 +63,8 @@ export default async function OutletPage({ params, searchParams }: {
   );
   const returns = await loadReturnCodes([...new Set(csgs.flatMap(c => (c.docKey ? [c.docKey] : [])))]);
   const [trash, logReady] = await Promise.all([loadTrash({ outletKey: row.key }), trashReady()]);
+  const [photos, photoTable] = await Promise.all([loadPhotos(row.key), photosReady()]);
+  const photoBlock = !photoTable ? "run the 0009 SQL in Supabase." : !driveConfigured() ? "Google Drive is not connected." : null;
   const files = csgFiles(row.lines, new Set(Object.keys(docs)));
   const place = [row.town, row.state].filter(Boolean).join(", ");
   const owners = row.owners.join(", ");
@@ -94,7 +98,7 @@ export default async function OutletPage({ params, searchParams }: {
             The workbook lists no consignment stock at this outlet. Upload its file below and the CSGs in it go live here.
           </p>
         )}
-        <OutletFiles csgs={csgs} docs={docs} returns={returns} outletKey={row.key} />
+        <OutletFiles csgs={csgs} docs={docs} returns={returns} outletKey={row.key} photos={photos} photoBlock={photoBlock} />
         <DeletedLog entries={trash} ready={logReady} />
       </div>
     </>

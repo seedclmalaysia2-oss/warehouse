@@ -292,3 +292,23 @@ model ConsignmentReturnLine {
   @@map("consignment_return_line")
   @@schema("warehouse")
 }
+
+// A proof photo for a CSG, taken on a phone. The image is a file in Google
+// Drive; deleting stamps deletedAt and bins the Drive file.
+model ConsignmentPhoto {
+  id          BigInt    @id @default(autoincrement())
+  csgKey      String    @map("csg_key")
+  outletKey   String    @map("outlet_key")
+  outlet      String    @default("")
+  driveFileId String    @map("drive_file_id")
+  fileName    String    @default("") @map("file_name")
+  bytes       Int       @default(0)
+  uploadedAt  DateTime  @default(now()) @map("uploaded_at")
+  uploadedBy  String?   @map("uploaded_by")
+  deletedAt   DateTime? @map("deleted_at")
+  deletedBy   String?   @map("deleted_by")
+
+  @@index([outletKey, csgKey])
+  @@map("consignment_photo")
+  @@schema("warehouse")
+}
