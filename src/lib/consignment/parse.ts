@@ -173,8 +173,9 @@ export function normalizeProduct(label: string): { product: string; family: stri
   }
   if (/FINE UV/.test(u)) return out("Monthly Fine UV Plus", "Fine UV");
   if (/MERURU/.test(u)) return out("Meruru", "Meruru");
-  if (/DISOP|HIDROHEALTH/.test(u)) return out(/60/.test(u) && !/360/.test(u) ? "Disop 60ml" : "Disop 360ml", "Solutions");
-  if (/ACUAIS/.test(u)) return out("Acuaiss Ultra", "Solutions");
+  // Acuaiss is a DISOP brand, so its names also say DISOP: test it first.
+  if (/ACUAIS/.test(u)) return out(/DUAL ?GEL/.test(u) ? "Acuaiss Dual Gel" : "Acuaiss Ultra", "Solutions");
+  if (/DISOP|HIDRO ?HEALTH/.test(u)) return out(/60/.test(u) && !/360/.test(u) ? "Disop 60ml" : "Disop 360ml", "Solutions");
   return out(label ? title(label) : "Unlabelled product", "Other");
 }
 
