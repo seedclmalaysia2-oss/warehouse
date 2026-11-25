@@ -5,6 +5,8 @@ import { ageText, csgFiles, docKey, fmtDate, fmtInt, type CsgGroup } from "@/lib
 import { BAND_BG, BAND_LABEL } from "./shelf-life";
 import { CsgDetails, forgetDetails } from "./csg-details";
 import { Chip, TAG_NOTE } from "./outlet-table";
+import { CsgPhotos } from "./csg-photos";
+import type { PhotoMeta } from "@/lib/consignment/photo-store";
 
 export type DocMeta = { fileName: string | null; uploadedAt: string; uploadedBy: string | null };
 
@@ -53,10 +55,11 @@ const small = "whitespace-nowrap rounded-md border border-line-strong px-2 py-0.
  * The checklist of CSG files this outlet needs. "Upload CSG file" and "Upload
  * CSR file" take one file each and match it to the right CSG in the list by its
  * number; each row has the same two buttons for its own CSG, and a Delete for a
- * file uploaded by mistake.
+ * file uploaded by mistake. Each row also takes proof photos of its CSG.
  */
-export function OutletFiles({ csgs, docs, returns, outletKey }: {
+export function OutletFiles({ csgs, docs, returns, outletKey, photos, photoBlock }: {
   csgs: CsgGroup[]; docs: Record<string, DocMeta>; /** CSR codes stored against each CSG, by normalised number. */ returns: Record<string, string[]>; outletKey: string;
+  /** Proof photos by normalised CSG number. */ photos: Record<string, PhotoMeta[]>; /** Why none can be taken yet, or null. */ photoBlock: string | null;
 }) {
   const router = useRouter();
   const [notes, setNotes] = useState<Record<string, RowNote>>({});
@@ -222,8 +225,10 @@ export function OutletFiles({ csgs, docs, returns, outletKey }: {
         </div>
       </div>
 
+      {photoBlock && <p className="border-t border-line bg-quiet px-4 py-2.5 text-sm text-warn">Photos cannot be taken yet: {photoBlock}</p>}
+
       <div role="status" aria-live="polite">
-        {removeError && <p role="alert" className="border-t border-line bg-quiet px-4 py-2.5 text-sm font-semibold text-danger">{removeError}</p>}
+        {removeError &&<p role="alert" className="border-t border-line bg-quiet px-4 py-2.5 text-sm font-semibold text-danger">{removeError}</p>}
 
         {whole.result && (
           <div className="border-t border-line bg-quiet px-4 py-2.5 text-sm text-ink-2">
@@ -336,6 +341,7 @@ export function OutletFiles({ csgs, docs, returns, outletKey }: {
             onCsr={f => uploadCsr(f, c.docKey!)}
             onRemove={() => removeCsg(c)}
             onRemoveCsr={code => removeCsr(code, c.docKey)}
+            outletKey={outletKey} photos={c.docKey ? photos[c.docKey] ?? [] : []} photoBlock={photoBlock}
           />
         ))}
       </ul>
@@ -343,9 +349,10 @@ export function OutletFiles({ csgs, docs, returns, outletKey }: {
   );
 }
 
-function CsgRow({ c, doc, note, isOpen, csrCodes, locked, removing, onToggle, onFile, onCsr, onRemove, onRemoveCsr }: {
+function CsgRow({ c, doc, note, isOpen, csrCodes, locked, removing, onToggle, onFile, onCsr, onRemove, onRemoveCsr, outletKey, photos, photoBlock }: {
   c: CsgGroup; doc?: DocMeta; note?: RowNote; isOpen: boolean; csrCodes: string[]; locked: boolean; removing: string | null;
   onToggle: () => void; onFile: (f: File) => void; onCsr: (f: File) => void; onRemove: () => void; onRemoveCsr: (code: string) => void;
+  outletKey: string; photos: PhotoMeta[]; photoBlock: string | null;
 }) {
   const panel = useId();
   const [over, setOver] = useState(false);
@@ -481,7 +488,9 @@ function CsgRow({ c, doc, note, isOpen, csrCodes, locked, removing, onToggle, on
         </div>
       </div>
 
-      {note?.error && <p role="alert" className="px-4 pb-3 pl-12 text-sm text-danger">{note.error}</p>}
+      {c.csgNo && !isCsr && <CsgPhotos csgNo={c.csgNo} outletKey={outletKey} photos={photos} blocked={photoBlock} />}
+
+      {note?.error && <p role="alert"className="px-4 pb-3 pl-12 text-sm text-danger">{note.error}</p>}
       {note?.warnings && note.warnings.length > 0 && (
         <ul className="list-disc px-4 pb-3 pl-16 text-sm text-warn">{note.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
       )}
